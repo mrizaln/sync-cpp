@@ -31,10 +31,10 @@ Setting up complete, now you can use the library.
 This is an example usage of this library.
 
 ```cpp
-#include <sync.hpp>             // for Sync<T, M>;
-#include <sync_container.hpp>   // for container adapter
-#include <sync_smart_ptr.hpp>   // SyncUnique, SyncUniqueCustom, SyncShared: wrapper for Sync<std::unique_ptr, M> (also shared_ptr)
-#include <sync_opt.hpp>         // same as above, but for optional
+#include <sync_cpp/sync.hpp>             // for Sync<T, M>;
+#include <sync_cpp/sync_container.hpp>   // for container adapter
+#include <sync_cpp/sync_smart_ptr.hpp>   // SyncUnique, SyncUniqueCustom, SyncShared: wrapper for Sync<std::unique_ptr, M> (also shared_ptr)
+#include <sync_cpp/sync_opt.hpp>         // same as above, but for optional
 
 #include <iostream>
 

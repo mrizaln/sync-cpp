@@ -1,5 +1,6 @@
-#include "sync_smart_ptr.hpp"
 #include "print.hpp"
+
+#include <sync_cpp/sync_smart_ptr.hpp>
 
 #include <boost/ut.hpp>
 

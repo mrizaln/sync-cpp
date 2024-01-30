@@ -1,5 +1,6 @@
-#include "sync.hpp"
 #include "print.hpp"
+
+#include <sync_cpp/sync.hpp>
 
 #define ENABLE_OLD_TEST 0
 

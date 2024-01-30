@@ -1,6 +1,6 @@
 #include "print.hpp"
 
-#include "sync.hpp"
+#include <sync_cpp/sync.hpp>
 
 #include <iostream>
 #include <string>
