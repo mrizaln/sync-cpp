@@ -8,7 +8,9 @@ Synchronized object wrapper for C++20
 
 ## Usage
 
-Clone this repository (or as submodule) into your project somewhere. Then you can just `add_subdirectory` to this repo. After that, you can link your target against `sync_cpp`. With that, your target will be able to see the `include` directory of this repository.
+### Setting up
+
+Clone this repository (or as submodule) into your project somewhere. Then you can just `add_subdirectory` to this repo, then link your target against `sync_cpp`.
 
 ```cmake
 #...
@@ -23,6 +25,8 @@ target_link_libraries(main PRIVATE sync_cpp)
 ```
 
 Setting up complete, now you can use the library.
+
+### Example
 
 This is an example usage of this library.
 
@@ -69,4 +73,8 @@ int main() {
 }
 ```
 
-The class `SyncContainer` is an adapter(?) that flattens the accessor to the value inside Sync. You can extend from this class to work with other container so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_opt.hpp).
+> See also an example project [here](./example)
+
+### Next step
+
+The class [`SyncContainer`](./include/sync_container.hpp) is an adapter(?) that flattens the accessor to the value inside Sync. You can extend from this class to work with other container so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_opt.hpp).
