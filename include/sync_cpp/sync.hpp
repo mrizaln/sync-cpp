@@ -9,9 +9,12 @@
 
 namespace spp
 {
+    template <typename T, typename... Ts>
+    concept DerivedFromAny = (std::derived_from<T, Ts> || ...);
+
     template <typename T, typename M = std::mutex>
         requires(!std::is_reference_v<T> && !std::is_pointer_v<T>)
-             && (std::derived_from<M, std::shared_mutex> || std::derived_from<M, std::mutex>)
+             && DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
     class Sync
     {
     public:
