@@ -1,5 +1,5 @@
 **/compile_commands.json
-*.bak
+**/*.bak
 .cache/
 **/build/
 neovim.json
