@@ -28,6 +28,9 @@ if(BUILD_TESTS)
     add_executable(sync_container_test test/sync_container_test.cpp)
     target_link_libraries(sync_container_test PRIVATE sync_cpp Boost::ut)
 
+    add_executable(sync_smart_ptr_test test/sync_smart_ptr_test.cpp)
+    target_link_libraries(sync_smart_ptr_test PRIVATE sync_cpp Boost::ut)
+
     enable_testing()
 
     add_test(
@@ -38,5 +41,10 @@ if(BUILD_TESTS)
     add_test(
         NAME sync_container_test
         COMMAND $<TARGET_FILE:sync_container_test>
+    )
+
+    add_test(
+        NAME sync_smart_ptr_test
+        COMMAND $<TARGET_FILE:sync_smart_ptr_test>
     )
 endif()
