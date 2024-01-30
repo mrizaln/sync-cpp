@@ -25,10 +25,18 @@ if(BUILD_TESTS)
     add_executable(sync_test test/sync_test.cpp)
     target_link_libraries(sync_test PRIVATE sync_cpp Boost::ut)
 
+    add_executable(sync_container_test test/sync_container_test.cpp)
+    target_link_libraries(sync_container_test PRIVATE sync_cpp Boost::ut)
+
     enable_testing()
 
     add_test(
-        NAME    sync_test
+        NAME sync_test
         COMMAND $<TARGET_FILE:sync_test>
+    )
+
+    add_test(
+        NAME sync_container_test
+        COMMAND $<TARGET_FILE:sync_container_test>
     )
 endif()
