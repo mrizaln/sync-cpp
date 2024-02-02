@@ -102,14 +102,14 @@ namespace spp
     };
 
     // aliases
-    template <typename T, typename M = std::mutex>
-    using SyncUnique = SyncSmartPtr<std::unique_ptr<T>, M>;
+    template <typename T, typename M = std::mutex, bool CheckedAccess = true>
+    using SyncUnique = SyncSmartPtr<std::unique_ptr<T>, M, CheckedAccess>;
 
-    template <typename T, typename D, typename M = std::mutex>
-    using SyncUniqueCustom = SyncSmartPtr<std::unique_ptr<T, D>, M>;
+    template <typename T, typename D, typename M = std::mutex, bool CheckedAccess = true>
+    using SyncUniqueCustom = SyncSmartPtr<std::unique_ptr<T, D>, M, CheckedAccess>;
 
-    template <typename T, typename M = std::mutex>
-    using SyncShared = SyncSmartPtr<std::shared_ptr<T>, M>;
+    template <typename T, typename M = std::mutex, bool CheckedAccess = true>
+    using SyncShared = SyncSmartPtr<std::shared_ptr<T>, M, CheckedAccess>;
 
     // deduction guides
     template <typename T, typename D = std::default_delete<T>>
