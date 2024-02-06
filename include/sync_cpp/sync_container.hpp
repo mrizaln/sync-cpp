@@ -79,23 +79,8 @@ namespace spp
         }
 
     protected:
-        Element& getContained(Container& container)
-        {
-            if constexpr (std::is_member_function_pointer_v<Getter>) {
-                return (container.*(GetterConst{}))();
-            } else {
-                return GetterConst{}(container);
-            }
-        }
-
-        const Element& getContained(const Container& container) const
-        {
-            if constexpr (std::is_member_function_pointer_v<GetterConst>) {
-                return (container.*(GetterConst{}))();
-            } else {
-                return GetterConst{}(container);
-            }
-        }
+        Element&       getContained(Container& container) { return GetterConst{}(container); }
+        const Element& getContained(const Container& container) const { return GetterConst{}(container); }
     };
 }
 

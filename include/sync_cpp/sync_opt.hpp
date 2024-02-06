@@ -22,7 +22,7 @@ namespace spp
         using GetterConst = std::conditional_t<
             Checked,
             decltype([](const Opt& o) -> decltype(auto) { return o.value(); }),    // std::bad_optional_access
-            decltype([](const Opt& opt) -> decltype(auto) { return *opt; })>;
+            decltype([](const Opt& o) -> decltype(auto) { return *o; })>;
     };
 
     template <typename T, typename M = std::mutex, bool CheckedAccess = false>
