@@ -115,6 +115,9 @@ namespace spp
             std::swap(m_value, other.m_value);
         }
 
+        M& getMutex() { return m_mutex; }
+        M& getMutex() const { return m_mutex; }
+
     private:
         [[nodiscard]] auto readLock() const
         {

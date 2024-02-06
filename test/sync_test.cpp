@@ -1,6 +1,7 @@
 #include "print.hpp"
 
 #include <sync_cpp/sync.hpp>
+#include <thread>
 
 #define ENABLE_OLD_TEST 0
 
@@ -361,6 +362,32 @@ int main()
                        type_name<Result>(),
                        type_name<Ret>());
         };
+    };
+
+    "get mutex to lock it outside"_test = [&] {
+        using namespace std::chrono_literals;
+        using String = spp::Sync<std::string, std::mutex>;
+
+        String       string{ "hello" };
+        std::jthread thread{ [&](const std::stop_token& st) {
+            while (!st.stop_requested()) {
+                string.write([](std::string& str) { str.push_back('o'); });
+                std::this_thread::sleep_for(100ms);
+            }
+        } };
+
+        std::this_thread::sleep_for(1s);
+        {
+            std::unique_lock lock{ string.getMutex() };
+            std::this_thread::sleep_for(200ms);
+        }
+        std::this_thread::sleep_for(1s);
+        {
+            const String&    stringRef{ string };
+            std::unique_lock lock{ stringRef.getMutex() };
+            std::this_thread::sleep_for(200ms);
+        }
+        thread.request_stop();
     };
 
 #if ENABLE_OLD_TEST
