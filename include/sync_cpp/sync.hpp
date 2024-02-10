@@ -48,9 +48,10 @@ namespace spp
             requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, const T&, Args...>
                   && requires(Value_type value) { (value.*f)(std::forward<Args>(args)...); }
         {
-            if constexpr (std::is_lvalue_reference_v<decltype((m_value.*f)(std::forward<Args>(args)...))>) {
-                static_assert(false && "Member function returning a reference in multithreaded context is dangerous!");
-            }
+            static_assert(
+                !std::is_lvalue_reference_v<decltype((m_value.*f)(std::forward<Args>(args)...))>,
+                "Member function returning a reference in multithreaded context is dangerous!"
+            );
 
             auto lock{ readLock() };
             return (m_value.*f)(std::forward<Args>(args)...);
@@ -62,9 +63,10 @@ namespace spp
             requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, T&, Args...>
                   && requires(Value_type value) { (value.*f)(std::forward<Args>(args)...); }
         {
-            if constexpr (std::is_lvalue_reference_v<decltype((m_value.*f)(std::forward<Args>(args)...))>) {
-                static_assert(false && "Member function returning a reference in multithreaded context is dangerous!");
-            }
+            static_assert(
+                !std::is_lvalue_reference_v<decltype((m_value.*f)(std::forward<Args>(args)...))>,
+                "Member function returning a reference in multithreaded context is dangerous!"
+            );
 
             auto lock{ writeLock() };
             return (m_value.*f)(std::forward<Args>(args)...);
@@ -75,9 +77,10 @@ namespace spp
             requires(!std::is_member_pointer_v<Func>) && std::invocable<Func, const T&>
         [[nodiscard]] decltype(auto) read(Func&& f) const
         {
-            if constexpr (std::is_lvalue_reference_v<decltype(f(m_value))>) {
-                static_assert(false && "Function returning a reference in multithreaded context is dangerous!");
-            }
+            static_assert(
+                !std::is_lvalue_reference_v<decltype(f(m_value))>,
+                "Function returning a reference in multithreaded context is dangerous!"
+            );
 
             auto lock{ readLock() };
             return f(m_value);
@@ -88,9 +91,10 @@ namespace spp
             requires(!std::is_member_pointer_v<Func>) && std::invocable<Func, T&>
         [[nodiscard]] decltype(auto) write(Func&& f)
         {
-            if constexpr (std::is_lvalue_reference_v<decltype(f(m_value))>) {
-                static_assert(false && "Function returning a reference in multithreaded context is dangerous!");
-            }
+            static_assert(
+                !std::is_lvalue_reference_v<decltype(f(m_value))>,
+                "Function returning a reference in multithreaded context is dangerous!"
+            );
 
             auto lock{ writeLock() };
             return f(m_value);
