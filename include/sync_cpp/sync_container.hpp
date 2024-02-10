@@ -33,7 +33,7 @@ namespace spp
         [[nodiscard]] auto getValue(Mem mem) const    // the 'auto' removes reference and cv-qualifier
         {
             return SyncBase::read([&](const Container& container) {    // no decltype(auto) here
-                const auto& value{ getContained(container) };
+                decltype(auto) value{ getContained(container) };
                 return value.*mem;
             });
         }
@@ -43,7 +43,7 @@ namespace spp
             requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, const Element&, Args...>
         {
             return SyncBase::read([&](const Container& container) -> decltype(auto) {
-                const auto& value{ getContained(container) };
+                decltype(auto) value{ getContained(container) };
                 return (value.*f)(std::forward<Args>(args)...);
             });
         }
@@ -53,7 +53,7 @@ namespace spp
             requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, Element&, Args...>
         {
             return SyncBase::write([&](Container& container) -> decltype(auto) {
-                auto& value{ getContained(container) };
+                decltype(auto) value{ getContained(container) };
                 return (value.*f)(std::forward<Args>(args)...);
             });
         }
@@ -63,7 +63,7 @@ namespace spp
         [[nodiscard]] decltype(auto) readValue(Func&& f) const
         {
             return SyncBase::read([&](const Container& container) -> decltype(auto) {
-                const auto& value{ getContained(container) };
+                decltype(auto) value{ getContained(container) };
                 return f(value);
             });
         }
@@ -73,13 +73,13 @@ namespace spp
         [[nodiscard]] decltype(auto) writeValue(Func&& f)
         {
             return SyncBase::write([&](Container& container) -> decltype(auto) {
-                auto& value{ getContained(container) };
+                decltype(auto) value{ getContained(container) };
                 return f(value);
             });
         }
 
     protected:
-        Element&       getContained(Container& container) { return GetterConst{}(container); }
+        Element&       getContained(Container& container) { return Getter{}(container); }
         const Element& getContained(const Container& container) const { return GetterConst{}(container); }
     };
 }
