@@ -111,10 +111,10 @@ public:
         return { m_value };
     }
 
-    void doSomethingWithArgs(AClass& aClass, int v)
+    void doSomethingWithArgs(AClass& aClass, BClass bClass)
     {
-        m_value += v - aClass.m_value;
-        print("\tSomeClass Doing something with args: '{}' '{}'\n", m_value, v);
+        m_value += bClass.m_value - aClass.m_value;
+        print("\tSomeClass Doing something with args: '{}', '{}'\n", aClass.m_value, bClass.m_value);
     }
 
     std::string concatName(const std::string& name) const { return m_name + name; }
@@ -186,7 +186,7 @@ int main()
                 using Ret      = decltype(std::declval<Resource>().m_id);
                 using RetNoRef = std::remove_reference_t<Ret>;
 
-                using Result = decltype(synced.get(std::move(mem)));
+                using Result = decltype(synced.get(mem));
                 ut::expect(true == std::same_as<Ret, Result>)
                     << fmt("Get member '{}' returns '{}' instead of '{}'",
                            type_name<Mem>(),
@@ -240,7 +240,7 @@ int main()
                 using Ret = std::invoke_result_t<MemFunc, Arg>;
 
                 // type equality check
-                using Result = decltype(synced.read(std::move(memFunc)));
+                using Result = decltype(synced.read(memFunc));
                 ut::expect(true == std::same_as<Ret, Result>)
                     << fmt("Read operation using '{}' member function returns '{}' instead of '{}'",
                            type_name<MemFunc>(),
@@ -249,7 +249,7 @@ int main()
 
                 // value equality check
                 if constexpr (!std::same_as<Result, void>) {
-                    decltype(auto) result  = synced.read(std::move(memFunc));
+                    decltype(auto) result  = synced.read(memFunc);
                     decltype(auto) result2 = (resource.*memFunc)();
                     ut::expect(ut::that % result == result2) << "Return value should be the same!";
                 }
@@ -325,7 +325,7 @@ int main()
                 using Ret = std::invoke_result_t<MemFunc, Arg>;
 
                 // type equality check
-                using Result = decltype(synced.write(std::move(memFunc)));
+                using Result = decltype(synced.write(memFunc));
                 ut::expect(true == std::same_as<Ret, Result>)
                     << fmt("Write operation using '{}' member function returns '{}' instead of '{}'",
                            type_name<MemFunc>(),
@@ -334,28 +334,30 @@ int main()
 
                 // value equality check
                 if constexpr (!std::same_as<Result, void>) {
-                    decltype(auto) result  = synced.write(std::move(memFunc));
+                    decltype(auto) result  = synced.write(memFunc);
                     decltype(auto) result2 = (resource.*memFunc)();
                     ut::expect(ut::that % result == result2) << "Return value should be the same!";
                 }
             }
             | std::tuple{
                   &Resource::doModification,
-                  &Resource::doConstOperation,
-                  &Resource::getNameCopy,
+                  // &Resource::doConstOperation,    // calling write when no write happening considered ill-formed
+                  // &Resource::getNameCopy,         // calling write when no write happening considered ill-formed
               };
 
         "Write using member function with argument"_test = [&] {
             using MemFunc = decltype(&Resource::doSomethingWithArgs);
             using ThisArg = Resource&;
-            using Arg     = int;
-            using Ret     = std::invoke_result_t<MemFunc, ThisArg, AClass&, Arg>;
+            using Ret     = std::invoke_result_t<MemFunc, ThisArg, AClass&, BClass>;
 
             AClass aClass{ 12 };
-            int    v{ 42 };
+            BClass bClass{ 3 };
+
+            // last param do explicit copy (in turn create a temporary) to be able to call the function that requires a
+            // copy of BClass as the last argument.
+            using Result = decltype(synced.write(&Resource::doSomethingWithArgs, aClass, BClass{ bClass }));
 
             // type equality check
-            using Result = decltype(synced.write(&Resource::doSomethingWithArgs, aClass, v));
             ut::expect(true == std::same_as<Ret, Result>)
                 << fmt("Write operation using '{}' member function returns '{}' instead of '{}'",
                        type_name<MemFunc>(),
@@ -412,19 +414,21 @@ int main()
 
     // invoke the member function through read (const) or write (non-const)
     auto aClass = synced.read(&SomeClass::doConstOperation);    // OK: using read to invoke const member function
-    // std::ignore = synced.read(&SomeClass::doModification);   // FAIL: using read to invoke non-const member function
+    // std::ignore = synced.read(&SomeClass::doModification);   // FAIL: using read to invoke non-const member
+    // function
 
-    std::ignore = synced.write(&SomeClass::doModification);      // OK: using write to invoke non-const member function
-    std::ignore = synced.write(&SomeClass::doConstOperation);    // OK: using write to invoke const member function
+    std::ignore = synced.write(&SomeClass::doModification);    // OK: using write to invoke non-const member function
+    // std::ignore = synced.write(&SomeClass::doConstOperation);    // FAIL: using write to invoke const member function
 
     // invoke the member function with arguments (constness matters)
-    synced.write(&SomeClass::doSomethingWithArgs, aClass, 42);    // OK: using write to invoke non-const member function
-    // synced.read(&SomeClass::doSomethingWithArgs, aClass, 42);  // FAIL: using read to invoke non-const member func
+    // synced.write(&SomeClass::doSomethingWithArgs, aClass, 42); // FAIL: using write to invoke non-const member fn
+    // synced.read(&SomeClass::doSomethingWithArgs, aClass, 42);  // FAIL: using read to invoke non-const member
+    // func
 
     // auto name  = synced.read(&SomeClass::getName);         // FAIL: member function returns a reference
     // auto name2 = synced.write(&SomeClass::getName);        // FAIL: member function returns a reference
-    auto name  = synced.read(&SomeClass::getNameCopy);     // OK: member function NOT returns a reference
-    auto name2 = synced.write(&SomeClass::getNameCopy);    // OK: member function NOT returns a reference
+    auto name = synced.read(&SomeClass::getNameCopy);    // OK: member function NOT returns a reference
+    // auto name2 = synced.write(&SomeClass::getNameCopy);    // FAIL: using write to invoke non-const member function
 
     auto name3 = synced.read([](const SomeClass& c) { return c.getName(); });         // OK: returns copy
     auto name4 = synced.write([](const SomeClass& c) { return c.getName(); });        // OK: returns copy

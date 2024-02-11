@@ -3,12 +3,14 @@
 
 #include "sync.hpp"
 
+#include <concepts>
 #include <mutex>
 #include <type_traits>
 
 namespace spp
 {
     template <typename Container, typename Element, typename Getter, typename GetterConst, typename M = std::mutex>
+        requires std::is_class_v<Element>
     class SyncContainer : public Sync<Container, M>
     {
     public:
@@ -28,53 +30,46 @@ namespace spp
         {
         }
 
-        template <typename Mem>
-            requires std::is_member_object_pointer_v<Mem>
-        [[nodiscard]] auto getValue(Mem mem) const    // the 'auto' removes reference and cv-qualifier
+        template <typename TT>
+        [[nodiscard]] TT getValue(TT Element::*mem) const
         {
-            return SyncBase::read([&](const Container& container) {    // no decltype(auto) here
+            return SyncBase::read([&](const Container& container) {
                 decltype(auto) value{ getContained(container) };
                 return value.*mem;
             });
         }
 
-        template <typename MemFunc, typename... Args>
-        [[nodiscard]] decltype(auto) readValue(MemFunc&& f, Args&&... args) const
-            requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, const Element&, Args...>
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret readValue(Ret (Element::*fn)(Args...) const, Args&&... args) const
         {
-            return SyncBase::read([&](const Container& container) -> decltype(auto) {
+            return SyncBase::read([&](const Container& container) {
                 decltype(auto) value{ getContained(container) };
-                return (value.*f)(std::forward<Args>(args)...);
+                return (value.*fn)(std::forward<Args>(args)...);
             });
         }
 
-        template <typename MemFunc, typename... Args>
-        [[nodiscard]] decltype(auto) writeValue(MemFunc&& f, Args&&... args)
-            requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, Element&, Args...>
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret writeValue(Ret (Element::*fn)(Args...), Args&&... args)
         {
-            return SyncBase::write([&](Container& container) -> decltype(auto) {
+            return SyncBase::write([&](Container& container) {
                 decltype(auto) value{ getContained(container) };
-                return (value.*f)(std::forward<Args>(args)...);
+                return (value.*fn)(std::forward<Args>(args)...);
             });
         }
 
-        template <typename Func>
-            requires(!std::is_member_function_pointer_v<Func>) && std::invocable<Func, const Element&>
-        [[nodiscard]] decltype(auto) readValue(Func&& f) const
+        [[nodiscard]] decltype(auto) readValue(std::invocable<const Element&> auto&& fn) const
         {
-            return SyncBase::read([&](const Container& container) -> decltype(auto) {
+            return SyncBase::read([&](const Container& container) {
                 decltype(auto) value{ getContained(container) };
-                return f(value);
+                return fn(value);
             });
         }
 
-        template <typename Func>
-            requires(!std::is_member_function_pointer_v<Func>) && std::invocable<Func, Element&>
-        [[nodiscard]] decltype(auto) writeValue(Func&& f)
+        [[nodiscard]] decltype(auto) writeValue(std::invocable<Element&> auto&& fn)
         {
-            return SyncBase::write([&](Container& container) -> decltype(auto) {
+            return SyncBase::write([&](Container& container) {
                 decltype(auto) value{ getContained(container) };
-                return f(value);
+                return fn(value);
             });
         }
 

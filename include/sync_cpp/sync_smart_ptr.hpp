@@ -1,8 +1,10 @@
 #ifndef SYNC_SMART_PTR_PSV2QWED
 #define SYNC_SMART_PTR_PSV2QWED
 
+#include "detail/concepts.hpp"
 #include "sync_container.hpp"
 
+#include <concepts>
 #include <memory>
 #include <mutex>
 #include <type_traits>
@@ -10,31 +12,7 @@
 
 namespace spp
 {
-    // clang-format off
-    template <typename T>
-    concept SmartPointer = requires(T sptr) {
-        // Type alias
-        typename T::element_type;
-
-        // Basic operations
-        { sptr.get() } -> std::same_as<typename T::element_type*>;
-        { sptr.reset() } -> std::same_as<void>;
-        { sptr.swap(sptr) } -> std::same_as<void>;
-
-        // Dereference and arrow operator
-        { *sptr } -> std::same_as<typename T::element_type&>;
-        { sptr.operator->() } -> std::same_as<typename T::element_type*>;
-
-        // Boolean conversion
-        { static_cast<bool>(sptr) } -> std::convertible_to<bool>;
-
-        // Comparison operators
-        { sptr == nullptr } -> std::convertible_to<bool>;
-        { sptr != nullptr } -> std::convertible_to<bool>;
-    };
-    // clang-format on
-
-    template <SmartPointer SP, bool Checked>
+    template <detail::concepts::SmartPointer SP, bool Checked>
     struct SyncSmartPtrAccessor
     {
         using Getter = std::conditional_t<
@@ -51,7 +29,7 @@ namespace spp
             decltype([](const SP& sp) -> decltype(auto) { return *sp; })>;
     };
 
-    template <SmartPointer SP, typename M = std::mutex, bool CheckedAccess = true>
+    template <detail::concepts::SmartPointer SP, typename M = std::mutex, bool CheckedAccess = true>
     class SyncSmartPtr : public SyncContainer<
                              SP,
                              typename SP::element_type,

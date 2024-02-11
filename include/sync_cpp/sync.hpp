@@ -1,6 +1,8 @@
 #ifndef SYNC_HPP_B4IRUHHF
 #define SYNC_HPP_B4IRUHHF
 
+#include "detail/concepts.hpp"
+
 #include <concepts>
 #include <mutex>
 #include <shared_mutex>
@@ -9,12 +11,9 @@
 
 namespace spp
 {
-    template <typename T, typename... Ts>
-    concept DerivedFromAny = (std::derived_from<T, Ts> || ...);
-
     template <typename T, typename M = std::mutex>
-        requires(!std::is_reference_v<T> && !std::is_pointer_v<T>)
-             && DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
+        requires detail::concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
+              && std::is_class_v<T>
     class Sync
     {
     public:
@@ -34,70 +33,61 @@ namespace spp
         }
 
         // @brief: Public member access of the wrapped value by copy
-        template <typename Mem>
-            requires std::is_member_object_pointer_v<Mem>
-        [[nodiscard]] auto get(Mem mem) const    // the 'auto' removes reference and cv-qualifier
+        template <typename TT>
+        [[nodiscard]] TT get(TT T::*mem) const
         {
             auto lock{ readLock() };
             return m_value.*mem;
         }
 
         // @brief: Convenience function for const member function call of the wrapped value (read-only access)
-        template <typename MemFunc, typename... Args>
-        [[nodiscard]] decltype(auto) read(MemFunc&& f, Args&&... args) const
-            requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, const T&, Args...>
-                  && requires(Value_type value) { (value.*f)(std::forward<Args>(args)...); }
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret read(Ret (T::*fn)(Args...) const, Args&&... args) const
         {
             static_assert(
-                !std::is_lvalue_reference_v<decltype((m_value.*f)(std::forward<Args>(args)...))>,
-                "Member function returning a reference in multithreaded context is dangerous!"
+                !std::is_lvalue_reference_v<Ret>,
+                "Member function returning a reference in multithreaded context is dangerous! Consider copying instead."
             );
 
             auto lock{ readLock() };
-            return (m_value.*f)(std::forward<Args>(args)...);
+            return (m_value.*fn)(std::forward<Args>(args)...);
         }
 
         // @brief: Convenience function for non-const member function call of the wrapped value (write access)
-        template <typename MemFunc, typename... Args>
-        [[nodiscard]] decltype(auto) write(MemFunc&& f, Args&&... args)
-            requires std::is_member_function_pointer_v<MemFunc> && std::invocable<MemFunc, T&, Args...>
-                  && requires(Value_type value) { (value.*f)(std::forward<Args>(args)...); }
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret write(Ret (T::*fn)(Args...), Args&&... args)
         {
             static_assert(
-                !std::is_lvalue_reference_v<decltype((m_value.*f)(std::forward<Args>(args)...))>,
-                "Member function returning a reference in multithreaded context is dangerous!"
+                !std::is_lvalue_reference_v<Ret>,
+                "Member function returning a reference in multithreaded context is dangerous! Consider copying instead."
             );
 
             auto lock{ writeLock() };
-            return (m_value.*f)(std::forward<Args>(args)...);
+            return (m_value.*fn)(std::forward<Args>(args)...);
         }
 
         // @brief: Read-only access to the wrapped value
-        template <typename Func>
-            requires(!std::is_member_pointer_v<Func>) && std::invocable<Func, const T&>
-        [[nodiscard]] decltype(auto) read(Func&& f) const
+        [[nodiscard]] decltype(auto) read(std::invocable<const T&> auto&& fn) const
         {
             static_assert(
-                !std::is_lvalue_reference_v<decltype(f(m_value))>,
-                "Function returning a reference in multithreaded context is dangerous!"
+                !std::is_lvalue_reference_v<decltype(fn(m_value))>,
+                "Function returning a reference in multithreaded context is dangerous! Consider copying instead"
             );
 
             auto lock{ readLock() };
-            return f(m_value);
+            return fn(m_value);
         }
 
         // @brief: Write access to the wrapped value
-        template <typename Func>
-            requires(!std::is_member_pointer_v<Func>) && std::invocable<Func, T&>
-        [[nodiscard]] decltype(auto) write(Func&& f)
+        [[nodiscard]] decltype(auto) write(std::invocable<T&> auto&& fn)
         {
             static_assert(
-                !std::is_lvalue_reference_v<decltype(f(m_value))>,
-                "Function returning a reference in multithreaded context is dangerous!"
+                !std::is_lvalue_reference_v<decltype(fn(m_value))>,
+                "Function returning a reference in multithreaded context is dangerous! Consider copying instead."
             );
 
             auto lock{ writeLock() };
-            return f(m_value);
+            return fn(m_value);
         }
 
         template <typename TT>
