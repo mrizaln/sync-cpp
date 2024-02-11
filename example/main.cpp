@@ -2,10 +2,26 @@
 
 #include <sync_cpp/sync.hpp>
 
+#include <cassert>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
+
+struct Something
+{
+    Something()                           = default;
+    Something(const Something&)           = delete;
+    Something operator=(const Something&) = delete;
+    Something(Something&&)                = delete;
+    Something operator=(Something&&)      = delete;
+
+    std::string str() const { return std::to_string(value); }
+
+    int value = 42;
+};
+
+Something g_something;
 
 class Foo
 {
@@ -47,7 +63,10 @@ public:
     const auto& getData() const { return m_data; }
     const auto& getName() const { return m_name; }
 
-    const int m_id;
+    auto& getGlobalSomething() const { return g_something; }
+
+    const int  m_id;
+    Something* m_ref{ &g_something };
 
 private:
     std::string      m_name;
@@ -84,8 +103,8 @@ int main()
                 auto r = n > 3 ? f.erase(1) : 0;
                 print("Thread 3: Erased {} elements, data size is now {}\n", r, n - r);
                 print("Thread 3: ");
-                f.print();
             });
+            foo.read(&Foo::print);
             std::this_thread::sleep_for(150ms);
         }
     });
@@ -102,4 +121,14 @@ int main()
             std::this_thread::sleep_for(100ms);
         }
     });
+
+    // We might want to return a reference to a value that may have longer lifetime or have static storage duration from
+    // an instance of a class. We can't directly do that because the constraint on the Sync::read and Sync::write
+    // functions that prohibits returning a reference. However, we still can bypass it by setting the reference (now
+    // pointer) from the outside of the lambda inside the lambda. It requires more effort now to get reference.
+    // NOTE: This pattern is heavily discouraged, you are basically trying to access a resource that might not be
+    // synchronized by doing this.
+    Something* sPtr;
+    foo.read([&sPtr](const Foo& f) { sPtr = &f.getGlobalSomething(); });
+    assert(sPtr == &g_something);
 }
