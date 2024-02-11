@@ -56,7 +56,7 @@ int main() {
 
 
     spp::Sync<Foo, std::shared_mutex> syncA;                              // use std::shared_mutex for multiple reader single writer
-    int v = syncA.read(&Foo::bar, 403.9);                                 // calling (non-const) member function
+    int v = syncA.read(&Foo::bar, 403.9);                                 // calling (const) member function
 
 
     spp::SyncUnique<Foo> syncUnique{ new Foo{} };                         // Sync<std::unique_ptr<T>, M> but with more convenient API
