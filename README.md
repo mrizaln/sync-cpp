@@ -77,4 +77,4 @@ int main() {
 
 ### Next step
 
-The class [`SyncContainer`](./include/sync_container.hpp) is an adapter(?) that flattens the accessor to the value inside Sync. You can extend from this class to work with other container so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_opt.hpp).
+The class [`SyncContainer`](./include/sync_container.hpp) is an adapter(?) that flattens the accessor to the value inside Sync. You can extend from this class to work with other container so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_cpp/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_cpp/sync_opt.hpp).
