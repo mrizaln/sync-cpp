@@ -6,46 +6,51 @@
 
 #include <optional>
 
-void printInt(const int& i)
-{
-    print("{}\n", i);
-}
-
 class A
 {
 public:
     int m_value{ 0 };
 };
 
-void printA(const A& a)
+template <typename... Args>
+std::string fmt(std::format_string<Args...>&& fmt, Args&&... args)
 {
-    print("{}\n", a.m_value);
-}
+    return std::format(std::forward<std::format_string<Args...>>(fmt), std::forward<Args>(args)...);
+};
 
 using namespace spp;
 
 int main()
 {
+    namespace ut = boost::ut;
+    using namespace ut::literals;
+    using namespace ut::operators;
+    using ut::reflection::type_name;
+
     using Container   = std::optional<A>;
     using Getter      = decltype([](std::optional<A>& opt) -> A& { return opt.value(); });
     using GetterConst = decltype([](const std::optional<A>& opt) -> const A& { return opt.value(); });
     using SyncOptA    = SyncContainer<std::optional<A>, A, Getter, GetterConst, std::mutex>;
 
-    SyncOptA syncA{ std::nullopt };
+    "Access"_test = [&] {
+        SyncOptA syncA{ std::nullopt };
+        syncA.write([](auto& o) { o = A{ 42 }; });
 
-    syncA.write([](auto& o) { o = A{ 42 }; });
+        bool hasValue = syncA.read([](const auto& o) { return o.has_value(); });
+        ut::expect(hasValue == true);
 
-    syncA.read([](const auto& o) { print("{}\n", o.has_value()); });
-    syncA.readValue(&printA);
+        syncA.write([](auto& o) { o = A{ 2'387'324 }; });
+        auto value = syncA.read([](const auto& o) { return o.value().m_value; });
+        ut::expect(value == 2'387'324_i);
 
-    syncA.write([](auto& o) { o = A{ 2'387'324 }; });
+        auto fmtA = [](const A& a) { return fmt("A = {}", a.m_value); };
+        auto strA = syncA.readValue(fmtA);
+        ut::expect(strA == "A = 2387324");
 
-    syncA.read([](const auto& o) { print("{}\n", o.has_value()); });
-    syncA.readValue(&printA);
+        // syncA.write(&std::optional<A>::reset);    // won't work, i haven't considered noexcept
+        syncA.write([](auto& o) { o.reset(); });    // for now for noexcept functions, use this
+    };
 
-    print("{}\n", syncA.getValue(&A::m_value));
-
-    using boost::ut::reflection::type_name;
     print("{:>2} = {} \n", sizeof(Container), type_name<Container>());
     print("{:>2} = {} \n", sizeof(Getter), type_name<Getter>());
     print("{:>2} = {} \n", sizeof(GetterConst), type_name<GetterConst>());

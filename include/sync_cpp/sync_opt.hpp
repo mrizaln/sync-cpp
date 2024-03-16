@@ -3,10 +3,7 @@
 
 #include "sync_container.hpp"
 
-#include <concepts>
-#include <mutex>
 #include <optional>
-#include <type_traits>
 
 namespace spp
 {
@@ -49,12 +46,12 @@ namespace spp
         template <typename... Args>
             requires std::constructible_from<T, Args...>
         SyncOpt(Args&&... args)
-            : SyncBase(std::in_place, std::forward<Args>(args)...)
+            : SyncBase{ std::in_place, std::forward<Args>(args)... }
         {
         }
 
         SyncOpt(std::optional<T>&& opt)
-            : SyncBase(std::move(opt))
+            : SyncBase{ std::move(opt) }
         {
         }
 

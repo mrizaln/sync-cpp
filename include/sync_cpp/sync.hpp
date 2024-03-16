@@ -11,24 +11,32 @@
 
 namespace spp
 {
-    template <typename T, typename M = std::mutex>
+    template <typename T, typename M = std::mutex, bool InternalMutex = true>
         requires detail::concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
               && std::is_class_v<T>
     class Sync
     {
     public:
         using Value_type = T;
-        using Mutex_type = M;
+        using Mutex_type = std::conditional_t<InternalMutex, M, M*>;
 
         template <typename... Args>
-            requires std::constructible_from<T, Args...>
+            requires std::constructible_from<T, Args...> && InternalMutex
         Sync(Args&&... args)
             : m_value{ std::forward<Args>(args)... }
         {
         }
 
         explicit Sync(T&& value)
+            requires InternalMutex
             : m_value{ std::forward<T>(value) }
+        {
+        }
+
+        explicit Sync(T&& value, M& mutex)
+            requires(!InternalMutex)
+            : m_value{ std::forward<T>(value) }
+            , m_mutex{ &mutex }
         {
         }
 
@@ -42,7 +50,7 @@ namespace spp
 
         // @brief: Convenience function for const member function call of the wrapped value (read-only access)
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret read(Ret (T::*fn)(Args...) const, Args&&... args) const
+        [[nodiscard]] Ret read(Ret (T::*fn)(Args...) const, std::type_identity_t<Args>... args) const
         {
             static_assert(
                 !std::is_lvalue_reference_v<Ret>,
@@ -55,7 +63,7 @@ namespace spp
 
         // @brief: Convenience function for non-const member function call of the wrapped value (write access)
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret write(Ret (T::*fn)(Args...), Args&&... args)
+        [[nodiscard]] Ret write(Ret (T::*fn)(Args...), std::type_identity_t<Args>... args)
         {
             static_assert(
                 !std::is_lvalue_reference_v<Ret>,
@@ -101,31 +109,37 @@ namespace spp
         // NOTE: at swap, make sure that both 'this' and 'other' does not have any thread waiting for resource from it
         void swap(Sync& other)
         {
-            std::unique_lock lock1{ m_mutex, std::defer_lock };
-            std::unique_lock lock2{ other.m_mutex, std::defer_lock };
+            std::unique_lock lock1{ getMutex(), std::defer_lock };
+            std::unique_lock lock2{ other.getMutex(), std::defer_lock };
 
             std::lock(lock1, lock2);
 
             std::swap(m_value, other.m_value);
         }
 
-        M& getMutex() { return m_mutex; }
-        M& getMutex() const { return m_mutex; }
+        M& getMutex() const
+        {
+            if constexpr (std::is_pointer_v<Mutex_type>) {
+                return *m_mutex;
+            } else {
+                return m_mutex;
+            }
+        }
 
     private:
         [[nodiscard]] auto readLock() const
         {
             if constexpr (std::derived_from<M, std::shared_mutex>) {
-                return std::shared_lock{ m_mutex };
+                return std::shared_lock{ getMutex() };
             } else {
-                return std::unique_lock{ m_mutex };
+                return std::unique_lock{ getMutex() };
             }
         }
 
-        [[nodiscard]] auto writeLock() { return std::unique_lock{ m_mutex }; }
+        [[nodiscard]] auto writeLock() { return std::unique_lock{ getMutex() }; }
 
-        mutable M  m_mutex;
-        Value_type m_value;
+        mutable Mutex_type m_mutex;
+        Value_type         m_value;
     };
 
     // deduction guide

@@ -3,10 +3,6 @@
 
 #include "sync.hpp"
 
-#include <concepts>
-#include <mutex>
-#include <type_traits>
-
 namespace spp
 {
     template <typename Container, typename Element, typename Getter, typename GetterConst, typename M = std::mutex>
@@ -21,12 +17,12 @@ namespace spp
         template <typename... Args>
             requires std::constructible_from<Container, Args...>
         SyncContainer(Args&&... args)
-            : SyncBase(std::forward<Args>(args)...)
+            : SyncBase{ std::forward<Args>(args)... }
         {
         }
 
         SyncContainer(Container&& container)
-            : SyncBase(std::move(container))
+            : SyncBase{ std::move(container) }
         {
         }
 
@@ -40,7 +36,7 @@ namespace spp
         }
 
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret readValue(Ret (Element::*fn)(Args...) const, Args&&... args) const
+        [[nodiscard]] Ret readValue(Ret (Element::*fn)(Args...) const, std::type_identity_t<Args>... args) const
         {
             return SyncBase::read([&](const Container& container) {
                 decltype(auto) value{ getContained(container) };
@@ -49,7 +45,7 @@ namespace spp
         }
 
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret writeValue(Ret (Element::*fn)(Args...), Args&&... args)
+        [[nodiscard]] Ret writeValue(Ret (Element::*fn)(Args...), std::type_identity_t<Args>... args)
         {
             return SyncBase::write([&](Container& container) {
                 decltype(auto) value{ getContained(container) };

@@ -1,14 +1,9 @@
 #ifndef SYNC_SMART_PTR_PSV2QWED
 #define SYNC_SMART_PTR_PSV2QWED
 
-#include "detail/concepts.hpp"
 #include "sync_container.hpp"
 
-#include <concepts>
 #include <memory>
-#include <mutex>
-#include <type_traits>
-#include <utility>
 
 namespace spp
 {
@@ -51,12 +46,12 @@ namespace spp
         template <typename... Args>
             requires std::constructible_from<SP, Args...>
         SyncSmartPtr(Args&&... args)
-            : SyncBase(std::forward<Args>(args)...)
+            : SyncBase{ std::forward<Args>(args)... }
         {
         }
 
         SyncSmartPtr(SP&& sptr)
-            : SyncBase(std::move(sptr))
+            : SyncBase{ std::move(sptr) }
         {
         }
 

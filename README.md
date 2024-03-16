@@ -75,6 +75,23 @@ int main() {
 
 > See also an example project [here](./example)
 
-### Next step
+### Limitation
 
-The class [`SyncContainer`](./include/sync_container.hpp) is an adapter(?) that flattens the accessor to the value inside Sync. You can extend from this class to work with other container so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_cpp/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_cpp/sync_opt.hpp).
+For now you can't pass a `noexcept` member function of an element to `Sync`'s member functions. The workaround for that is to use a lambda.
+
+```cpp
+#include <sync_cpp/sync.hpp>
+
+class A {};
+
+int main() {
+    spp::Sync<std::optional<A>> syncA;
+    // syncA.write(&std::optional<A>::reset);    // won't compile, std::optional<A>::reset is noexcept
+    syncA.write([](auto& a){ a.reset(); });      // compiles
+}
+
+```
+
+### Customization
+
+The class [`SyncContainer`](./include/sync_cpp/sync_container.hpp) is an adapter(?) class that flattens the accessor to the value inside Sync. You can extend from this class to work with other container (or your custom type) so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_cpp/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_cpp/sync_opt.hpp).
