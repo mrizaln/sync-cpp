@@ -2,6 +2,11 @@
 
 Synchronized object wrapper for C++20
 
+## TODO
+
+- [ ] Allow stateful lambda for `SyncContainer` `Getter`and`GetterConst` (but should I though?)
+- [ ] Rework `Sync::read` and `Sync::write` that has member function arguments with some kind of function traits ([see](https://breese.github.io/2022/03/06/deducing-function-signatures.html)) to reduce repetition
+
 ## Dependencies
 
 - C++20
@@ -15,7 +20,7 @@ Clone this repository (or as submodule) into your project somewhere. Then you ca
 ```cmake
 #...
 
-# for example, I cloned this repository into {PROJECT_ROOT}/lib directory
+# for example, we clone this repository into {PROJECT_ROOT}/lib/ directory
 add_subdirectory(./lib/sync-cpp)
 
 add_executable(main main.cpp)
@@ -77,19 +82,50 @@ int main() {
 
 ### Limitation
 
-For now you can't pass a `noexcept` member function of an element to `Sync`'s member functions. The workaround for that is to use a lambda.
+Member functions of `Sync` that receives member function pointer can't disambiguate an overloaded function. A work around is to use a lambda.
 
 ```cpp
-#include <sync_cpp/sync.hpp>
+class Foo {
+    int something() &;
+    int something() &&;
+};
 
-class A {};
+spp::Sync<Foo> foo;
+// int value = foo.write(&Foo::something);                      // won't compile
+int value = foo.write([](auto& f) { return f.something(); });   // compiles
+```
 
-int main() {
-    spp::Sync<std::optional<A>> syncA;
-    // syncA.write(&std::optional<A>::reset);    // won't compile, std::optional<A>::reset is noexcept
-    syncA.write([](auto& a){ a.reset(); });      // compiles
-}
+We might want to return a reference to a value that may have longer lifetime or have static storage duration from an instance of a class. We can't directly do that because the constraint on the `Sync::read` and `Sync::write` functions prohibits returning a reference. However, we still can bypass it by doing this:
 
+> This pattern is heavily discouraged, you are basically trying to access a resource that might not be synchronized by doing this.
+
+```cpp
+class Foo {
+    Something& getGlobalSomething();
+};
+
+spp::Sync<Foo> foo;
+
+// ...
+
+Something* sPtr;
+foo.read([&sPtr](const Foo& f) { sPtr = &f.getGlobalSomething(); });
+```
+
+Unfortunately, currently we can pass a `nullptr` as member function pointer to the read and write function. For now, I'll ignore this case, and assume that every member function pointer passed to the functions are not `nullptr`. I don't know what to do when it's `nullptr` (`throw`? `assert`? do nothing?)
+
+```cpp
+class Foo {
+    int bar(int v);
+};
+
+spp::Sync<Foo> foo;
+
+// ...
+
+using F = decltype(&Foo::bar);
+F f     = nullptr;
+int v   = foo.write(f, 1);
 ```
 
 ### Customization
