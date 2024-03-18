@@ -80,7 +80,7 @@ int main() {
 
 > See also an example project [here](./example)
 
-### Limitation
+## Limitation
 
 Member functions of `Sync` that receives member function pointer can't disambiguate an overloaded function. A work around is to use a lambda.
 
@@ -128,6 +128,6 @@ F f     = nullptr;
 int v   = foo.write(f, 1);
 ```
 
-### Customization
+## Customization
 
 The class [`SyncContainer`](./include/sync_cpp/sync_container.hpp) is an adapter(?) class that flattens the accessor to the value inside Sync. You can extend from this class to work with other container (or your custom type) so it will be easier to work with. For the example of implementation, see [SyncSmartPtr](./include/sync_cpp/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_cpp/sync_opt.hpp).
