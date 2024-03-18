@@ -3,10 +3,53 @@
 #include <sync_cpp/sync.hpp>
 
 #include <cassert>
-#include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
+
+namespace mock
+{
+    // this class is a mock of spp::Sync that does not have any synchronization mechanism, it just forwards function
+    // calls this mock class is used to demonstrate data race
+    template <typename T, typename = void, bool = true>
+    class Sync
+    {
+    public:
+        Sync(auto&&... value)
+            : m_value{ std::move(value)... }
+        {
+        }
+
+        template <typename TT>
+        [[nodiscard]] TT get(TT T::*mem) const
+        {
+            return m_value.*mem;
+        }
+
+        template <typename Ret, typename... Args>
+        Ret read(Ret (T::*fn)(Args...) const, std::type_identity_t<Args>... args) const
+        {
+            return (m_value.*fn)(std::forward<Args>(args)...);
+        }
+
+        template <typename Ret, typename... Args>
+        Ret write(Ret (T::*fn)(Args...), std::type_identity_t<Args>... args)
+        {
+            return (m_value.*fn)(std::forward<Args>(args)...);
+        }
+
+        decltype(auto) read(auto&& fn) const { return fn(m_value); }
+        decltype(auto) write(auto&& fn) { return fn(m_value); }
+
+        T m_value;
+    };
+}
+
+#ifdef USE_MOCK
+using mock::Sync;
+#else
+using spp::Sync;
+#endif
 
 struct Something
 {
@@ -77,7 +120,7 @@ int main()
 {
     using namespace std::chrono_literals;
 
-    spp::Sync<Foo> foo{ "Example" };
+    Sync<Foo> foo{ "Example" };
 
     std::jthread t1([&foo]() {
         for (std::size_t i = 0; i < 10; ++i) {
@@ -121,14 +164,4 @@ int main()
             std::this_thread::sleep_for(100ms);
         }
     });
-
-    // We might want to return a reference to a value that may have longer lifetime or have static storage duration from
-    // an instance of a class. We can't directly do that because the constraint on the Sync::read and Sync::write
-    // functions that prohibits returning a reference. However, we still can bypass it by setting the reference (now
-    // pointer) from the outside of the lambda inside the lambda. It requires more effort now to get reference.
-    // NOTE: This pattern is heavily discouraged, you are basically trying to access a resource that might not be
-    // synchronized by doing this.
-    Something* sPtr;
-    foo.read([&sPtr](const Foo& f) { sPtr = &f.getGlobalSomething(); });
-    assert(sPtr == &g_something);
 }
