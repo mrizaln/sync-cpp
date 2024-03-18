@@ -24,13 +24,14 @@ namespace spp
             decltype([](const Opt& o) -> decltype(auto) { return *o; })>;
     };
 
-    template <typename T, typename M = std::mutex, bool CheckedAccess = false>
+    template <typename T, typename Mutex = std::mutex, bool CheckedAccess = false, bool InternalMutex = true>
     class SyncOpt : public SyncContainer<
                         std::optional<T>,
                         T,
                         typename SyncOptAccessor<T, CheckedAccess>::Getter,
                         typename SyncOptAccessor<T, CheckedAccess>::GetterConst,
-                        M>
+                        Mutex,
+                        InternalMutex>
     {
     public:
         using SyncBase = SyncContainer<
@@ -38,20 +39,35 @@ namespace spp
             T,
             typename SyncOptAccessor<T, CheckedAccess>::Getter,
             typename SyncOptAccessor<T, CheckedAccess>::GetterConst,
-            M>;
+            Mutex,
+            InternalMutex>;
         using Value_type   = typename SyncBase::Value_type;
         using Mutex_type   = typename SyncBase::Mutex_type;
         using Element_type = T;
 
         template <typename... Args>
-            requires std::constructible_from<T, Args...>
+            requires std::constructible_from<T, Args...> && InternalMutex
         SyncOpt(Args&&... args)
             : SyncBase{ std::in_place, std::forward<Args>(args)... }
         {
         }
 
         SyncOpt(std::optional<T>&& opt)
+            requires InternalMutex
             : SyncBase{ std::move(opt) }
+        {
+        }
+
+        template <typename... Args>
+            requires std::constructible_from<T, Args...> && (!InternalMutex)
+        SyncOpt(Mutex& mutex, Args&&... args)
+            : SyncBase{ mutex, std::in_place, std::forward<Args>(args)... }
+        {
+        }
+
+        SyncOpt(Mutex& mutex, std::optional<T>&& opt)
+            requires(!InternalMutex)
+            : SyncBase{ mutex, std::move(opt) }
         {
         }
 

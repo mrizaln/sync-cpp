@@ -2,6 +2,7 @@
 #define CONCEPTS_HPP_RG36TC7P
 
 #include <concepts>
+#include <type_traits>
 
 namespace spp::detail::concepts
 {
@@ -31,6 +32,12 @@ namespace spp::detail::concepts
         { sptr != nullptr } -> std::convertible_to<bool>;
     };
     // clang-format on
+
+    template <typename Fn, typename From, typename To>
+    concept Transformer = std::invocable<Fn, From> && std::same_as<To, std::invoke_result_t<Fn, From>>;
+
+    template <typename Fn>
+    concept StatelessLambda = std::regular<Fn> && std::is_class_v<Fn> && std::is_empty_v<Fn>;
 }
 
 #endif /* end of include guard: CONCEPTS_HPP_RG36TC7P */

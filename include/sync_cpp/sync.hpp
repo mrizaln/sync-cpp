@@ -3,17 +3,15 @@
 
 #include "detail/concepts.hpp"
 
-#include <concepts>
 #include <mutex>
 #include <shared_mutex>
-#include <type_traits>
 #include <utility>
 
 namespace spp
 {
     template <typename T, typename M = std::mutex, bool InternalMutex = true>
-        requires detail::concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
-              && std::is_class_v<T>
+        requires std::is_class_v<T> && (!std::is_reference_v<M>)
+              && detail::concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
     class Sync
     {
     public:
@@ -24,21 +22,37 @@ namespace spp
             requires std::constructible_from<T, Args...> && InternalMutex
         Sync(Args&&... args)
             : m_value{ std::forward<Args>(args)... }
+            , m_mutex{}
         {
         }
 
         explicit Sync(T&& value)
             requires InternalMutex
             : m_value{ std::forward<T>(value) }
+            , m_mutex{}
         {
         }
 
-        explicit Sync(T&& value, M& mutex)
+        template <typename... Args>
+            requires std::constructible_from<T, Args...> && (!InternalMutex)
+        Sync(M& mutex, Args&&... args)
+            : m_value{ std::forward<Args>(args)... }
+            , m_mutex{ &mutex }
+        {
+        }
+
+        explicit Sync(M& mutex, T&& value)
             requires(!InternalMutex)
             : m_value{ std::forward<T>(value) }
             , m_mutex{ &mutex }
         {
         }
+
+        Sync(Sync&&)            = delete;
+        Sync& operator=(Sync&&) = delete;
+
+        Sync(const Sync&)            = delete;
+        Sync& operator=(const Sync&) = delete;
 
         // @brief: Public member access of the wrapped value by copy
         template <typename TT>
@@ -74,6 +88,32 @@ namespace spp
             return (m_value.*fn)(std::forward<Args>(args)...);
         }
 
+        // @brief: Convenience function for const member function call of the wrapped value (read-only access)
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret read(Ret (T::*fn)(Args...) const noexcept, std::type_identity_t<Args>... args) const
+        {
+            static_assert(
+                !std::is_lvalue_reference_v<Ret>,
+                "Member function returning a reference in multithreaded context is dangerous! Consider copying instead."
+            );
+
+            auto lock{ readLock() };
+            return (m_value.*fn)(std::forward<Args>(args)...);
+        }
+
+        // @brief: Convenience function for non-const member function call of the wrapped value (write access)
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret write(Ret (T::*fn)(Args...) noexcept, std::type_identity_t<Args>... args)
+        {
+            static_assert(
+                !std::is_lvalue_reference_v<Ret>,
+                "Member function returning a reference in multithreaded context is dangerous! Consider copying instead."
+            );
+
+            auto lock{ writeLock() };
+            return (m_value.*fn)(std::forward<Args>(args)...);
+        }
+
         // @brief: Read-only access to the wrapped value
         [[nodiscard]] decltype(auto) read(std::invocable<const T&> auto&& fn) const
         {
@@ -83,7 +123,7 @@ namespace spp
             );
 
             auto lock{ readLock() };
-            return fn(m_value);
+            return std::forward<decltype(fn)>(fn)(m_value);
         }
 
         // @brief: Write access to the wrapped value
@@ -95,7 +135,7 @@ namespace spp
             );
 
             auto lock{ writeLock() };
-            return fn(m_value);
+            return std::forward<decltype(fn)>(fn)(m_value);
         }
 
         template <typename TT>
@@ -138,8 +178,8 @@ namespace spp
 
         [[nodiscard]] auto writeLock() { return std::unique_lock{ getMutex() }; }
 
-        mutable Mutex_type m_mutex;
         Value_type         m_value;
+        mutable Mutex_type m_mutex;
     };
 
     // deduction guide

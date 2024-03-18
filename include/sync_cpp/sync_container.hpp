@@ -5,24 +5,48 @@
 
 namespace spp
 {
-    template <typename Container, typename Element, typename Getter, typename GetterConst, typename M = std::mutex>
-        requires std::is_class_v<Element>
-    class SyncContainer : public Sync<Container, M>
+    template <
+        typename Container,
+        typename Element,
+        typename Getter,
+        typename GetterConst,
+        typename Mutex     = std::mutex,
+        bool InternalMutex = true>
+        requires detail::concepts::Transformer<Getter, Container&, Element&>
+              && detail::concepts::Transformer<GetterConst, const Container&, const Element&>
+              && detail::concepts::StatelessLambda<Getter>
+              && detail::concepts::StatelessLambda<GetterConst>
+              && std::is_class_v<Element>
+    class SyncContainer : public Sync<Container, Mutex, InternalMutex>
     {
     public:
         using Value_type = Container;
-        using Mutex_type = M;
-        using SyncBase   = Sync<Container, M>;
+        using Mutex_type = Mutex;
+        using SyncBase   = Sync<Container, Mutex, InternalMutex>;
 
         template <typename... Args>
-            requires std::constructible_from<Container, Args...>
+            requires std::constructible_from<Container, Args...> && InternalMutex
         SyncContainer(Args&&... args)
             : SyncBase{ std::forward<Args>(args)... }
         {
         }
 
         SyncContainer(Container&& container)
+            requires InternalMutex
             : SyncBase{ std::move(container) }
+        {
+        }
+
+        template <typename... Args>
+            requires std::constructible_from<Container, Args...> && (!InternalMutex)
+        SyncContainer(Mutex& mutex, Args&&... args)
+            : SyncBase{ mutex, std::forward<Args>(args)... }
+        {
+        }
+
+        SyncContainer(Mutex& mutex, Container&& container)
+            requires(!InternalMutex)
+            : SyncBase{ mutex, std::move(container) }
         {
         }
 
@@ -70,8 +94,12 @@ namespace spp
         }
 
     protected:
-        Element&       getContained(Container& container) { return Getter{}(container); }
-        const Element& getContained(const Container& container) const { return GetterConst{}(container); }
+        Element&       getContained(Container& container) { return m_getter(container); }
+        const Element& getContained(const Container& container) const { return m_getterConst(container); }
+
+    private:
+        [[no_unique_address]] Getter      m_getter;
+        [[no_unique_address]] GetterConst m_getterConst;
     };
 }
 
