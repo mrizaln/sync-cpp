@@ -1,5 +1,3 @@
-#include "print.hpp"
-
 #include <sync_cpp/sync.hpp>
 
 #include <boost/ut.hpp>
@@ -27,6 +25,15 @@
 
 #ifndef ENABLE_PRINT
 #    define ENABLE_PRINT 0
+#endif
+
+#if ENABLE_PRINT
+#    include "print.hpp"
+#else
+void print(auto&&...)
+{
+    /* no-op*/
+}
 #endif
 
 class Mutex : public std::shared_mutex
@@ -168,7 +175,7 @@ int main()
     using namespace ut::operators;
     using ut::reflection::type_name;
 
-    ut::suite<"Sync Construction"> syncConstruction [[maybe_unused]] = [] {
+    ut::suite syncConstruction [[maybe_unused]] = [] {
         using Resource     = SomeClass;
         using SyncResource = Sync<SomeClass, Mutex>;
 
@@ -201,7 +208,7 @@ int main()
         // };
     };
 
-    ut::suite<"Sync Get Member Operation"> syncGetMember [[maybe_unused]] = [] {
+    ut::suite syncGetMember [[maybe_unused]] = [] {
         using Resource     = SomeClass;
         using SyncResource = Sync<SomeClass, Mutex>;
 
@@ -224,7 +231,7 @@ int main()
               };
     };
 
-    ut::suite<"Sync Read Operation"> syncRead [[maybe_unused]] = [] {
+    ut::suite syncRead [[maybe_unused]] = [] {
         using Resource     = SomeClass;
         using SyncResource = Sync<SomeClass, Mutex>;
 
@@ -310,7 +317,7 @@ int main()
         };
     };
 
-    ut::suite<"Sync Write Operation"> syncWrite [[maybe_unused]] = [] {
+    ut::suite syncWrite [[maybe_unused]] = [] {
         using Resource     = SomeClass;
         using SyncResource = Sync<SomeClass, Mutex>;
 
@@ -423,7 +430,7 @@ int main()
         using String = spp::Sync<std::string, std::mutex, false>;
 
         std::mutex mutex;
-        String     string{ "hello"s, mutex };
+        String     string{ mutex, "hello"s };
 
         std::jthread thread{ [&](const std::stop_token& st) {
             while (!st.stop_requested()) {
@@ -446,6 +453,7 @@ int main()
     };
 
     "Perfect forwarding"_test = [&] {
+        using boost::ut::_i;
         using Data = CopyCounter;
         class DataUser
         {
@@ -467,12 +475,12 @@ int main()
         Data data1;
         auto id_1     = data1.m_id;
         auto id_1_res = syncData.read(&DataUser::useconst, std::move(data1));
-        ut::expect(id_1 == id_1_res) << fmt("Expected '{}' but got '{}'\n", id_1, id_1_res);
+        ut::expect(id_1 == _i(id_1_res)) << fmt("Mismatching id");
 
         Data data2;
         auto id_2     = data2.m_id;
         auto id_2_res = syncData.write(&DataUser::use, std::move(data2));
-        ut::expect(id_2 == id_2_res) << fmt("Expected '{}' but got '{}'\n", id_2, id_2_res);
+        ut::expect(id_2 == _i(id_2_res)) << fmt("Mismatching id");
     };
 
 #if ENABLE_OLD_TEST

@@ -114,10 +114,10 @@ int main()
         return someValue + 42;
     });
 
-    auto ptr = uniqSome.read([](auto& up) { return up.get(); });
+    auto ptr [[maybe_unused]] = uniqSome.read([](auto& up) { return up.get(); });
 
-    auto b = static_cast<bool>(uniqSome);
-    b      = !uniqSome;
+    auto b [[maybe_unused]] = static_cast<bool>(uniqSome);
+    b                       = !uniqSome;
 
     if (uniqSome) { }
     if (!uniqSome) { }
@@ -161,12 +161,12 @@ int main()
     // SyncUnique syncedUniqGuide2{ std::make_unique<Some>(1, "one") };
     // SyncShared syncedShared2{ std::make_shared<Some>(3, "three") };
 
-    auto id = syncedUniqGuide.getValue(&Some::m_id);
+    auto id [[maybe_unused]] = syncedUniqGuide.getValue(&Some::m_id);
 
     syncedUniqGuide.reset(nullptr);
     // auto va = syncedUniqGuide.readValue(&Some::get);
     try {
-        auto ve = syncedUniqGuide.writeValue(&Some::modify, 12);
+        auto ve [[maybe_unused]] = syncedUniqGuide.writeValue(&Some::modify, 12);
     } catch (std::exception& e) {
         std::cerr << "Exception catched: " << e.what() << '\n';
     }
