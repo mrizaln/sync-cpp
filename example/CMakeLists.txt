@@ -10,10 +10,10 @@ project(sync-cpp-example)
 add_subdirectory(./lib/sync-cpp)
 
 add_executable(main main.cpp)
-target_link_libraries(main PRIVATE sync_cpp)
+target_link_libraries(main PRIVATE sync-cpp)
 
 add_executable(main_broken main.cpp)
-target_link_libraries(main_broken PRIVATE sync_cpp)
+target_link_libraries(main_broken PRIVATE sync-cpp)
 target_compile_definitions(main_broken PRIVATE USE_MOCK)
 
 # thread sanitizer
