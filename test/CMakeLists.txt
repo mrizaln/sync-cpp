@@ -13,7 +13,7 @@ add_subdirectory(./lib/sync-cpp)
 
 function(exe_test FILENAME)
     add_executable(${FILENAME} ${FILENAME}.cpp)
-    target_link_libraries(${FILENAME} PRIVATE sync_cpp Boost::ut)
+    target_link_libraries(${FILENAME} PRIVATE sync-cpp Boost::ut)
 
     add_test(
         NAME    ${FILENAME}

@@ -24,7 +24,7 @@ Clone this repository (or as submodule) into your project somewhere. Then you ca
 add_subdirectory(./lib/sync-cpp)
 
 add_executable(main main.cpp)
-target_link_libraries(main PRIVATE sync_cpp)
+target_link_libraries(main PRIVATE sync-cpp)
 
 #...
 ```
