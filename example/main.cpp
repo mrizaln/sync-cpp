@@ -2,7 +2,6 @@
 
 #include <sync_cpp/sync.hpp>
 
-#include <cassert>
 #include <string>
 #include <thread>
 #include <vector>

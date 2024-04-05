@@ -12,10 +12,10 @@ namespace spp
         typename GetterConst,
         typename Mutex     = std::mutex,
         bool InternalMutex = true>
-        requires detail::concepts::Transformer<Getter, Container&, Element&>
-              && detail::concepts::Transformer<GetterConst, const Container&, const Element&>
-              && detail::concepts::StatelessLambda<Getter>
-              && detail::concepts::StatelessLambda<GetterConst>
+        requires detail::concepts::Transformer<Getter, Container&, Element&>                     //
+              && detail::concepts::Transformer<GetterConst, const Container&, const Element&>    //
+              && detail::concepts::StatelessLambda<Getter>                                       //
+              && detail::concepts::StatelessLambda<GetterConst>                                  //
               && std::is_class_v<Element>
     class SyncContainer : public Sync<Container, Mutex, InternalMutex>
     {
