@@ -8,28 +8,25 @@
 namespace spp
 {
     template <typename T, bool Checked>
-    class SyncOptAccessor
+    struct SyncOptAccessor
     {
-    private:
+        // clang-format off
         using Opt = std::optional<T>;
+        T&       operator()(Opt&       opt) const requires Checked   { return opt.value(); }
+        const T& operator()(const Opt& opt) const requires Checked   { return opt.value(); }
+        T&       operator()(Opt&       opt) const requires(!Checked) { return *opt; }
+        const T& operator()(const Opt& opt) const requires(!Checked) { return *opt; }
 
-    public:
-        using Getter = std::conditional_t<
-            Checked,
-            decltype([](Opt& o) -> decltype(auto) { return o.value(); }),    // std::bad_optional_access
-            decltype([](Opt& o) -> decltype(auto) { return *o; })>;
-        using GetterConst = std::conditional_t<
-            Checked,
-            decltype([](const Opt& o) -> decltype(auto) { return o.value(); }),    // std::bad_optional_access
-            decltype([](const Opt& o) -> decltype(auto) { return *o; })>;
+        auto operator<=>(const SyncOptAccessor&) const = default;
+        // clang-format on
     };
 
-    template <typename T, typename Mutex = std::mutex, bool CheckedAccess = false, bool InternalMutex = true>
+    template <typename T, typename Mutex = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
     class SyncOpt : public SyncContainer<
                         std::optional<T>,
                         T,
-                        typename SyncOptAccessor<T, CheckedAccess>::Getter,
-                        typename SyncOptAccessor<T, CheckedAccess>::GetterConst,
+                        SyncOptAccessor<T, CheckedAccess>,
+                        SyncOptAccessor<T, CheckedAccess>,
                         Mutex,
                         InternalMutex>
     {
@@ -37,8 +34,8 @@ namespace spp
         using SyncBase = SyncContainer<
             std::optional<T>,
             T,
-            typename SyncOptAccessor<T, CheckedAccess>::Getter,
-            typename SyncOptAccessor<T, CheckedAccess>::GetterConst,
+            SyncOptAccessor<T, CheckedAccess>,
+            SyncOptAccessor<T, CheckedAccess>,
             Mutex,
             InternalMutex>;
         using Value_type   = typename SyncBase::Value_type;
@@ -52,9 +49,20 @@ namespace spp
         {
         }
 
-        SyncOpt(std::optional<T>&& opt)
+        SyncOpt(const SyncOpt&)            = delete;
+        SyncOpt(SyncOpt&&)                 = delete;
+        SyncOpt& operator=(const SyncOpt&) = delete;
+        SyncOpt& operator=(SyncOpt&&)      = delete;
+
+        explicit SyncOpt(T&& val)
+            requires InternalMutex && std::movable<T>
+            : SyncBase{ std::move(val) }
+        {
+        }
+
+        explicit SyncOpt(const std::nullopt_t& null)
             requires InternalMutex
-            : SyncBase{ std::move(opt) }
+            : SyncBase{ null }
         {
         }
 
@@ -65,9 +73,15 @@ namespace spp
         {
         }
 
-        SyncOpt(Mutex& mutex, std::optional<T>&& opt)
+        explicit SyncOpt(Mutex& mutex, T&& val)
+            requires(!InternalMutex && std::movable<T>)
+            : SyncBase{ mutex, std::move(val) }
+        {
+        }
+
+        explicit SyncOpt(Mutex& mutex, const std::nullopt_t& null)
             requires(!InternalMutex)
-            : SyncBase{ mutex, std::move(opt) }
+            : SyncBase{ mutex, null }
         {
         }
 
@@ -94,6 +108,9 @@ namespace spp
             return *this;
         }
     };
+
+    template <typename T>
+    SyncOpt(T&&) -> SyncOpt<T>;
 }
 
 #endif /* end of include guard: SYNC_OPT_HP7FTB9E4 */
