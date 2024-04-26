@@ -18,6 +18,17 @@ namespace spp
         using Value_type = T;
         using Mutex_type = std::conditional_t<InternalMutex, M, M*>;
 
+        Sync(const Sync&)            = delete;
+        Sync& operator=(const Sync&) = delete;
+        Sync(Sync&&)                 = delete;
+        Sync& operator=(Sync&&)      = delete;
+
+        // prevent class from being created using new and destructed using delete
+        static void* operator new(size_t)    = delete;
+        static void* operator new[](size_t)  = delete;
+        static void operator delete(void*)   = delete;
+        static void operator delete[](void*) = delete;
+
         template <typename... Args>
             requires std::constructible_from<T, Args...> && InternalMutex
         Sync(Args&&... args)
@@ -47,12 +58,6 @@ namespace spp
             , m_mutex{ &mutex }
         {
         }
-
-        Sync(Sync&&)            = delete;
-        Sync& operator=(Sync&&) = delete;
-
-        Sync(const Sync&)            = delete;
-        Sync& operator=(const Sync&) = delete;
 
         // @brief: Public member access of the wrapped value by copy
         template <typename TT>
@@ -149,15 +154,15 @@ namespace spp
         // NOTE: at swap, make sure that both 'this' and 'other' does not have any thread waiting for resource from it
         void swap(Sync& other)
         {
-            std::unique_lock lock1{ getMutex(), std::defer_lock };
-            std::unique_lock lock2{ other.getMutex(), std::defer_lock };
+            std::unique_lock lock1{ mutex(), std::defer_lock };
+            std::unique_lock lock2{ other.mutex(), std::defer_lock };
 
             std::lock(lock1, lock2);
 
             std::swap(m_value, other.m_value);
         }
 
-        M& getMutex() const
+        M& mutex() const
         {
             if constexpr (std::is_pointer_v<Mutex_type>) {
                 return *m_mutex;
@@ -170,13 +175,13 @@ namespace spp
         [[nodiscard]] auto readLock() const
         {
             if constexpr (std::derived_from<M, std::shared_mutex>) {
-                return std::shared_lock{ getMutex() };
+                return std::shared_lock{ mutex() };
             } else {
-                return std::unique_lock{ getMutex() };
+                return std::unique_lock{ mutex() };
             }
         }
 
-        [[nodiscard]] auto writeLock() { return std::unique_lock{ getMutex() }; }
+        [[nodiscard]] auto writeLock() { return std::unique_lock{ mutex() }; }
 
         Value_type         m_value;
         mutable Mutex_type m_mutex;

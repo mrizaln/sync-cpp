@@ -413,13 +413,13 @@ int main()
 
         std::this_thread::sleep_for(1s);
         {
-            std::unique_lock lock{ string.getMutex() };
+            std::unique_lock lock{ string.mutex() };
             std::this_thread::sleep_for(200ms);
         }
         std::this_thread::sleep_for(1s);
         {
             const String&    stringRef{ string };
-            std::unique_lock lock{ stringRef.getMutex() };
+            std::unique_lock lock{ stringRef.mutex() };
             std::this_thread::sleep_for(200ms);
         }
         thread.request_stop();
@@ -566,12 +566,12 @@ int main()
         print("[DEBUG]: ENABLE_DEADLOCK_CODE is disabled: skipping deadlock test\n");
     }
 
-    auto& mutex = synced.getMutex();
+    auto& mutex = synced.mutex();
 
     const Sync<SomeClass, Mutex> synced3{ "SomeClass instance 1", 42 };
     std::ignore = synced3.read(&SomeClass::doConstOperation);
     // std::ignore = synced3.write(&SomeClass::doConstOperation);
 
-    auto& mutex3 = synced3.getMutex();
+    auto& mutex3 = synced3.mutex();
 #endif
 }
