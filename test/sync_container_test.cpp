@@ -1,9 +1,8 @@
-#include "print.hpp"
-
 #include <sync_cpp/sync_container.hpp>
 
 #include <boost/ut.hpp>
 
+#include <format>
 #include <optional>
 
 struct A
@@ -20,6 +19,12 @@ std::string fmt(std::format_string<Args...>&& fmt, Args&&... args)
 
 using spp::SyncContainer;
 
+template <typename... Fs>
+struct Overload : Fs...
+{
+    using Fs::operator()...;
+};
+
 int main()
 {
     namespace ut = boost::ut;
@@ -27,12 +32,11 @@ int main()
     using namespace ut::operators;
     using ut::reflection::type_name;
 
-    using Container   = std::optional<A>;
-    using Getter      = decltype([](std::optional<A>& opt) -> A& { return opt.value(); });
-    using GetterConst = decltype([](const std::optional<A>& opt) -> const A& { return opt.value(); });
+    using Container = std::optional<A>;
+    using Getter    = decltype([](auto&& opt) -> decltype(auto) { return opt.value(); });
 
     ut::suite basicOperations [[maybe_unused]] = [] {
-        using SyncOptA = SyncContainer<std::optional<A>, A, Getter, GetterConst, std::mutex>;
+        using SyncOptA = SyncContainer<std::optional<A>, A, Getter, std::mutex>;
 
         "Internal mutex"_test = [&] {
             "Default ctor"_test = [&] {
@@ -69,7 +73,7 @@ int main()
         };
 
         "External mutex"_test = [&] {
-            using SyncOptAExt = SyncContainer<Container, A, Getter, GetterConst, std::mutex, false>;
+            using SyncOptAExt = SyncContainer<Container, A, Getter, std::mutex, false>;
             std::mutex mutex;
 
             "Default ctor"_test = [&] {
@@ -108,19 +112,17 @@ int main()
     };
 
     "Size constraints"_test = [&] {
-        using StatelessGetter      = Getter;
-        using StatelessGetterConst = GetterConst;
-        using Mutex                = std::mutex;
+        using StatelessGetter = Getter;
+        using Mutex           = std::mutex;
 
-        using StatelessSyncOptA = SyncContainer<Container, A, StatelessGetter, StatelessGetterConst, Mutex>;
+        using StatelessSyncOptA = SyncContainer<Container, A, StatelessGetter, Mutex>;
 
-        constexpr auto containerSize   = sizeof(Container);
-        constexpr auto mutexSize       = sizeof(Mutex);
-        constexpr auto getterSize      = sizeof(StatelessGetter);
-        constexpr auto getterConstSize = sizeof(StatelessGetterConst);
-        constexpr auto syncBaseSize    = containerSize + mutexSize;
+        constexpr auto containerSize = sizeof(Container);
+        constexpr auto mutexSize     = sizeof(Mutex);
+        constexpr auto getterSize    = sizeof(StatelessGetter);
+        constexpr auto syncBaseSize  = containerSize + mutexSize;
 
-        ut::expect(sizeof(StatelessSyncOptA) < syncBaseSize + getterSize + getterConstSize);
+        ut::expect(sizeof(StatelessSyncOptA) < syncBaseSize + getterSize);
         ut::expect(sizeof(StatelessSyncOptA) == syncBaseSize);
     };
 }

@@ -13,7 +13,9 @@
 #include <type_traits>
 #include <utility>
 
-#define ENABLE_OLD_TEST 0
+#define ENABLE_OLD_TEST      1
+#define ENABLE_PRINT         1
+#define ENABLE_DEADLOCK_CODE 0
 
 #ifndef ENABLE_OLD_TEST
 #    define ENABLE_OLD_TEST 0
@@ -28,12 +30,10 @@
 #endif
 
 #if ENABLE_PRINT
-#    include "print.hpp"
+#    include <fmt/core.h>
+#    define print(...) fmt::print(__VA_ARGS__)
 #else
-void print(auto&&...)
-{
-    /* no-op*/
-}
+#    define print(...)
 #endif
 
 class Mutex : public std::shared_mutex
@@ -161,7 +161,7 @@ struct CopyCounter
 };
 
 template <typename... Args>
-std::string fmt(std::format_string<Args...>&& fmt, Args&&... args)
+std::string fmtt(std::format_string<Args...>&& fmt, Args&&... args)
 {
     return std::format(std::forward<std::format_string<Args...>>(fmt), std::forward<Args>(args)...);
 };
@@ -180,32 +180,34 @@ int main()
         using SyncResource = Sync<SomeClass, Mutex>;
 
         "Forward construction"_test = [&] {
-            ut::expect(true == std::constructible_from<SyncResource, std::string, int>)
-                << fmt("Construction with '{}' ctor arguments is not possible when it should be!\n",
-                       type_name<Resource>());
+            ut::expect(true == std::constructible_from<SyncResource, std::string, int>) << fmtt(
+                "Construction with '{}' ctor arguments is not possible when it should be!\n", type_name<Resource>()
+            );
         };
 
         "Resource move construction"_test = [&] {
-            ut::expect(true == std::constructible_from<SyncResource, Resource&&>)
-                << fmt("Construction from moved '{}' instance is not possible when it should be!\n",
-                       type_name<Resource&&>());
+            ut::expect(true == std::constructible_from<SyncResource, Resource&&>) << fmtt(
+                "Construction from moved '{}' instance is not possible when it should be!\n", type_name<Resource&&>()
+            );
+        };
+
+        // NOTE: Making Sync movable will make things easier for the user, but might introduce bug if the moved-from
+        // value is used just after it is moved (like if a reader/writer was in queue before it was moved since the
+        // mutex will be hold for the entire moving procedure.
+        "Sync move construction"_test = [&] {
+            ut::expect(false == std::constructible_from<SyncResource, SyncResource&&>)
+                << fmtt("Construction from moved'{}' is possible when it should not!\n", type_name<SyncResource&&>());
         };
 
         "Resource copy construction"_test = [&] {
             ut::expect(true == std::constructible_from<SyncResource, Resource>)
-                << fmt("Construction from copy '{}' is not possible when it should be!\n", type_name<Resource>());
+                << fmtt("Construction from copy '{}' is not possible when it should be!\n", type_name<Resource>());
         };
 
         "Sync copy construction"_test = [&] {
             ut::expect(false == std::constructible_from<SyncResource, SyncResource&>)
-                << fmt("Construction from copy '{}' is possible when it should not!\n", type_name<SyncResource&>());
+                << fmtt("Construction from copy '{}' is possible when it should not!\n", type_name<SyncResource&>());
         };
-
-        // // I need to rethink this decision
-        // ut::skip / "Sync Move construction"_test = [&] {
-        //     ut::expect(false == std::constructible_from<SyncResource, SyncResource&&>)
-        //         << fmt("Construction from copy '{}' is possible when it should not!\n", type_name<SyncResource&&>());
-        // };
     };
 
     ut::suite syncGetMember [[maybe_unused]] = [] {
@@ -220,11 +222,12 @@ int main()
                 using RetNoRef = std::remove_reference_t<Ret>;
 
                 using Result = decltype(synced.get(mem));
-                ut::expect(true == std::same_as<Ret, Result>)
-                    << fmt("Get member '{}' returns '{}' instead of '{}'\n",
-                           type_name<Mem>(),
-                           type_name<Result>(),
-                           type_name<RetNoRef>());
+                ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                    "Get member '{}' returns '{}' instead of '{}'\n",
+                    type_name<Mem>(),
+                    type_name<Result>(),
+                    type_name<RetNoRef>()
+                );
             }
             | std::tuple{
                   &Resource::m_id,
@@ -246,11 +249,12 @@ int main()
 
                 // type equality check
                 using Result = decltype(synced.read(callable));
-                ut::expect(true == std::same_as<Ret, Result>)
-                    << fmt("Read operation using '{}' callable returns '{}' instead of '{}'\n",
-                           type_name<Callable>(),
-                           type_name<Result>(),
-                           type_name<Ret>());
+                ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                    "Read operation using '{}' callable returns '{}' instead of '{}'\n",
+                    type_name<Callable>(),
+                    type_name<Result>(),
+                    type_name<Ret>()
+                );
 
                 // value equality check
                 if constexpr (!std::same_as<Result, void>) {
@@ -274,11 +278,12 @@ int main()
 
                 // type equality check
                 using Result = decltype(synced.read(memFunc));
-                ut::expect(true == std::same_as<Ret, Result>)
-                    << fmt("Read operation using '{}' member function returns '{}' instead of '{}'\n",
-                           type_name<MemFunc>(),
-                           type_name<Result>(),
-                           type_name<Ret>());
+                ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                    "Read operation using '{}' member function returns '{}' instead of '{}'\n",
+                    type_name<MemFunc>(),
+                    type_name<Result>(),
+                    type_name<Ret>()
+                );
 
                 // value equality check
                 if constexpr (!std::same_as<Result, void>) {
@@ -302,11 +307,12 @@ int main()
 
             // type equality check
             using Result = decltype(synced.read(&Resource::concatName, suffix));
-            ut::expect(true == std::same_as<Ret, Result>)
-                << fmt("Read operation using '{}' member function returns '{}' instead of '{}'\n",
-                       type_name<MemFunc>(),
-                       type_name<Result>(),
-                       type_name<Ret>());
+            ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                "Read operation using '{}' member function returns '{}' instead of '{}'\n",
+                type_name<MemFunc>(),
+                type_name<Result>(),
+                type_name<Ret>()
+            );
 
             // value equality check
             if constexpr (!std::same_as<Result, void>) {
@@ -332,11 +338,12 @@ int main()
 
                 // type equality check
                 using Result = decltype(synced.write(callable));
-                ut::expect(true == std::same_as<Ret, Result>)
-                    << fmt("Write operation using '{}' callable returns '{}' instead of '{}'\n",
-                           type_name<Callable>(),
-                           type_name<Result>(),
-                           type_name<Ret>());
+                ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                    "Write operation using '{}' callable returns '{}' instead of '{}'\n",
+                    type_name<Callable>(),
+                    type_name<Result>(),
+                    type_name<Ret>()
+                );
 
                 // value equality check
                 if constexpr (!std::same_as<Result, void>) {
@@ -359,11 +366,12 @@ int main()
 
                 // type equality check
                 using Result = decltype(synced.write(memFunc));
-                ut::expect(true == std::same_as<Ret, Result>)
-                    << fmt("Write operation using '{}' member function returns '{}' instead of '{}'\n",
-                           type_name<MemFunc>(),
-                           type_name<Result>(),
-                           type_name<Ret>());
+                ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                    "Write operation using '{}' member function returns '{}' instead of '{}'\n",
+                    type_name<MemFunc>(),
+                    type_name<Result>(),
+                    type_name<Ret>()
+                );
 
                 // value equality check
                 if constexpr (!std::same_as<Result, void>) {
@@ -391,11 +399,12 @@ int main()
             using Result = decltype(synced.write(&Resource::doSomethingWithArgs, aClass, BClass{ bClass }));
 
             // type equality check
-            ut::expect(true == std::same_as<Ret, Result>)
-                << fmt("Write operation using '{}' member function returns '{}' instead of '{}'\n",
-                       type_name<MemFunc>(),
-                       type_name<Result>(),
-                       type_name<Ret>());
+            ut::expect(true == std::same_as<Ret, Result>) << fmtt(
+                "Write operation using '{}' member function returns '{}' instead of '{}'\n",
+                type_name<MemFunc>(),
+                type_name<Result>(),
+                type_name<Ret>()
+            );
         };
     };
 
@@ -475,12 +484,12 @@ int main()
         Data data1;
         auto id_1     = data1.m_id;
         auto id_1_res = syncData.read(&DataUser::useconst, std::move(data1));
-        ut::expect(id_1 == _i(id_1_res)) << fmt("Mismatching id");
+        ut::expect(id_1 == _i(id_1_res)) << fmtt("Mismatching id");
 
         Data data2;
         auto id_2     = data2.m_id;
         auto id_2_res = syncData.write(&DataUser::use, std::move(data2));
-        ut::expect(id_2 == _i(id_2_res)) << fmt("Mismatching id");
+        ut::expect(id_2 == _i(id_2_res)) << fmtt("Mismatching id");
     };
 
 #if ENABLE_OLD_TEST
@@ -495,7 +504,7 @@ int main()
 
     // read from or write to the synced object using lambda
     std::ignore = synced.read([](auto& v) {    // auto& is deduced to const SomeClass&, I can't constraint this behavior
-        print("[DEBUG] {} at {}: decltype(v) = {}\n", __FILE__, __LINE__, ut::reflection::type_name<decltype(v)>());
+        print("!!! {} at {}: decltype(v) = {}\n", __FILE__, __LINE__, ut::reflection::type_name<decltype(v)>());
         return v.doConstOperation();
     });
     std::ignore = synced.write([](auto& v) {
@@ -531,7 +540,7 @@ int main()
         synced.read([&synced](const auto& v) {
             using M = decltype(synced)::Mutex_type;
             print(
-                "[DEBUG]: recursive locks using {} ({})\n",
+                "!!! recursive locks using {} ({})\n",
                 type_name<M>(),
                 std::derived_from<M, std::shared_mutex> ? "won't deadlock" : "deadlock"
             );
@@ -540,30 +549,29 @@ int main()
             std::ignore = synced.read(&SomeClass::doConstOperation);
         });
     } else {
-        print("[DEBUG]: using std::mutex: skipping recursive lock test\n");
+        print("!!! using std::mutex: skipping recursive lock test\n");
     }
 
     // writer and reader deadlock (throws if std::shared_mutex is used)
     if constexpr (ENABLE_DEADLOCK_CODE) {
         synced.write([&synced](auto&) {
-            print("[DEBUG]: deadlock! you can't recover from this!\n");
+            print("!!! deadlock! you can't recover from this!\n");
             std::ignore = synced.read([](const auto& v) { return v.doConstOperation(); });
             std::ignore = synced.read(&SomeClass::doConstOperation);
         });
     } else {
-        print("[DEBUG]: ENABLE_DEADLOCK_CODE is disabled: skipping deadlock test\n");
+        print("!!! ENABLE_DEADLOCK_CODE is disabled: skipping deadlock test\n");
     }
 
     // another writer and reader deadlock (no throws! silent bug!)
     if constexpr (ENABLE_DEADLOCK_CODE) {
         synced.read([&synced](const auto&) {
-            print("[DEBUG]: deadlock! you can't recover from this!\n");
+            print("!!! deadlock! you can't recover from this!\n");
             std::ignore = synced.write(&SomeClass::doModification);
             std::ignore = synced.read(&SomeClass::doConstOperation);
         });
-    }
-    {
-        print("[DEBUG]: ENABLE_DEADLOCK_CODE is disabled: skipping deadlock test\n");
+    } else {
+        print("!!! ENABLE_DEADLOCK_CODE is disabled: skipping deadlock test\n");
     }
 
     auto& mutex = synced.mutex();

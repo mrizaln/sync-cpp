@@ -1,11 +1,9 @@
-#include "print.hpp"
-
 #include <sync_cpp/sync_smart_ptr.hpp>
 
 #include <boost/ut.hpp>
+#include <fmt/core.h>
 
 #include <exception>
-#include <format>
 #include <memory>
 
 class Some
@@ -18,14 +16,15 @@ public:
         , m_value{ v }
         , m_name{ std::move(name) }
     {
-        print("Some created: {} {}\n", m_value, m_name);
+        fmt::print("Some created: {} {}\n", m_value, m_name);
     }
+
     Some(const Some&)            = delete;
     Some(Some&&)                 = delete;
     Some& operator=(const Some&) = delete;
     Some& operator=(Some&&)      = delete;
 
-    ~Some() { print("Some destroyed: {} {}\n", m_value, m_name); }
+    ~Some() { fmt::print("Some destroyed: {} {}\n", m_value, m_name); }
 
     int get() const { return m_value; }
     int modify(int v) { return m_value += v; }
@@ -53,10 +52,10 @@ int main()
     Sync<Some> some{ 42, "stack" };    // OK
 
     val = some.read(&Some::get);
-    print("Some::get '{}'\n", val);
+    fmt::print("Some::get '{}'\n", val);
 
     val = some.write(&Some::modify, 13);
-    print("Some::modify '{}'\n", val);
+    fmt::print("Some::modify '{}'\n", val);
 
     //
     // unique_ptr
@@ -64,10 +63,10 @@ int main()
     // SyncUnique<Some> uniqSome{ new Some{ 43, "uniq" } };             // OK: calling new manually
 
     val = uniqSome.readValue(&Some::get);
-    print("Some::get '{}'\n", val);
+    fmt::print("Some::get '{}'\n", val);
 
     val = uniqSome.writeValue(&Some::modify, 13);
-    print("Some::modify '{}'\n", val);
+    fmt::print("Some::modify '{}'\n", val);
 
     //
     // shared_ptr
@@ -75,10 +74,10 @@ int main()
     // SyncShared<Some> sharedSome{ new Some{ 44, "shared"} };              // OK: calling new manually
 
     val = sharedSome.readValue(&Some::get);
-    print("Some::get '{}'\n", val);
+    fmt::print("Some::get '{}'\n", val);
 
     val = sharedSome.writeValue(&Some::modify, 13);
-    print("Some::modify '{}'\n", val);
+    fmt::print("Some::modify '{}'\n", val);
 
     //
     // unique_ptr with custom deleter
@@ -86,10 +85,10 @@ int main()
     // SyncUniqueCustom<Some, decltype([](Some* s) { destroy(s); })> uniqSomeCustom{ create(45) };    // OK, lambda
 
     val = uniqSomeCustom.readValue(&Some::get);
-    print("Some::get '{}'\n", val);
+    fmt::print("Some::get '{}'\n", val);
 
     val = uniqSomeCustom.writeValue(&Some::modify, 13);
-    print("Some::modify '{}'\n", val);
+    fmt::print("Some::modify '{}'\n", val);
 
     //
     // shared_ptr with custom deleter
@@ -97,10 +96,10 @@ int main()
     // LockedShared<Some> sharedSomeCustom{ create(46), [](Some* s) { destroy(s); } };      // OK, lambda
 
     val = sharedSomeCustom.readValue(&Some::get);
-    print("Some::get '{}'\n", val);
+    fmt::print("Some::get '{}'\n", val);
 
     val = sharedSomeCustom.writeValue(&Some::modify, 13);
-    print("Some::modify '{}'\n", val);
+    fmt::print("Some::modify '{}'\n", val);
 
     //
     // other
@@ -131,26 +130,26 @@ int main()
 
     using boost::ut::reflection::type_name;
 
-    print("\n");
+    fmt::print("\n");
     using Mutex = decltype(some)::Mutex_type;
-    print("{:>2} = sizeof '{}'\n", sizeof(Mutex), type_name<Mutex>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(Mutex), type_name<Mutex>());
 
-    print("{:>2} = sizeof '{}'\n", sizeof(Some), type_name<Some>());
-    print("{:>2} = sizeof '{}'\n", sizeof(some), type_name<decltype(some)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(Some), type_name<Some>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(some), type_name<decltype(some)>());
 
     using UniquePtr = decltype(uniqSome)::Value_type;
-    print("{:>2} = sizeof '{}'\n", sizeof(UniquePtr), type_name<UniquePtr>());
-    print("{:>2} = sizeof '{}'\n", sizeof(uniqSome), type_name<decltype(uniqSome)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(UniquePtr), type_name<UniquePtr>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(uniqSome), type_name<decltype(uniqSome)>());
 
     using UniquePtrCustom = decltype(uniqSomeCustom)::Value_type;
-    print("{:>2} = sizeof '{}'\n", sizeof(UniquePtrCustom), type_name<UniquePtrCustom>());
-    print("{:>2} = sizeof '{}'\n", sizeof(uniqSomeCustom), type_name<decltype(uniqSomeCustom)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(UniquePtrCustom), type_name<UniquePtrCustom>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(uniqSomeCustom), type_name<decltype(uniqSomeCustom)>());
 
     using SharedPtr = decltype(sharedSome)::Value_type;
-    print("{:>2} = sizeof '{}'\n", sizeof(SharedPtr), type_name<SharedPtr>());
-    print("{:>2} = sizeof '{}'\n", sizeof(sharedSome), type_name<decltype(sharedSome)>());
-    print("{:>2} = sizeof '{}'\n", sizeof(sharedSomeCustom), type_name<decltype(sharedSomeCustom)>());
-    print("\n");
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(SharedPtr), type_name<SharedPtr>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(sharedSome), type_name<decltype(sharedSome)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(sharedSomeCustom), type_name<decltype(sharedSomeCustom)>());
+    fmt::print("\n");
 
     // using deduction guides
     SyncSmartPtr syncedUniqGuide{ std::make_unique<Some>(1, "one") };
