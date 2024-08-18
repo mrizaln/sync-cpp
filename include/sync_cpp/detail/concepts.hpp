@@ -37,7 +37,7 @@ namespace spp::detail::concepts
     concept Transformer = std::invocable<Fn, From> && std::same_as<To, std::invoke_result_t<Fn, From>>;
 
     template <typename Fn>
-    concept StatelessLambda = std::regular<Fn> && std::is_class_v<Fn> && std::is_empty_v<Fn>;
+    concept StatelessLambda = std::is_empty_v<Fn>;
 }
 
 #endif /* end of include guard: CONCEPTS_HPP_RG36TC7P */

@@ -9,13 +9,11 @@ namespace spp
         typename Container,
         typename Element,
         typename Getter,
-        typename GetterConst,
         typename Mutex     = std::mutex,
         bool InternalMutex = true>
-        requires detail::concepts::Transformer<Getter, Container&, Element&>                     //
-              && detail::concepts::Transformer<GetterConst, const Container&, const Element&>    //
-              && detail::concepts::StatelessLambda<Getter>                                       //
-              && detail::concepts::StatelessLambda<GetterConst>                                  //
+        requires detail::concepts::Transformer<Getter, Container&, Element&>                //
+              && detail::concepts::Transformer<Getter, const Container&, const Element&>    //
+              && detail::concepts::StatelessLambda<Getter>                                  //
               && std::is_class_v<Element>
     class SyncContainer : public Sync<Container, Mutex, InternalMutex>
     {
@@ -95,11 +93,10 @@ namespace spp
 
     protected:
         Element&       getContained(Container& container) { return m_getter(container); }
-        const Element& getContained(const Container& container) const { return m_getterConst(container); }
+        const Element& getContained(const Container& container) const { return m_getter(container); }
 
     private:
-        [[no_unique_address]] Getter      m_getter;
-        [[no_unique_address]] GetterConst m_getterConst;
+        [[no_unique_address]] Getter m_getter;
     };
 }
 

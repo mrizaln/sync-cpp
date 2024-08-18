@@ -7,37 +7,29 @@
 
 namespace spp
 {
-    template <typename T, bool Checked>
+    template <bool Checked>
     struct SyncOptAccessor
     {
-        // clang-format off
-        using Opt = std::optional<T>;
-        T&       operator()(Opt&       opt) const requires Checked   { return opt.value(); }
-        const T& operator()(const Opt& opt) const requires Checked   { return opt.value(); }
-        T&       operator()(Opt&       opt) const requires(!Checked) { return *opt; }
-        const T& operator()(const Opt& opt) const requires(!Checked) { return *opt; }
+        decltype(auto) operator()(auto&& opt) const
+            requires Checked
+        {
+            return opt.value();
+        }
+        decltype(auto) operator()(auto&& opt) const
+            requires(!Checked)
+        {
+            return *opt;
+        }
 
         auto operator<=>(const SyncOptAccessor&) const = default;
-        // clang-format on
     };
 
     template <typename T, typename Mutex = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
-    class SyncOpt : public SyncContainer<
-                        std::optional<T>,
-                        T,
-                        SyncOptAccessor<T, CheckedAccess>,
-                        SyncOptAccessor<T, CheckedAccess>,
-                        Mutex,
-                        InternalMutex>
+    class SyncOpt : public SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mutex, InternalMutex>
     {
     public:
-        using SyncBase = SyncContainer<
-            std::optional<T>,
-            T,
-            SyncOptAccessor<T, CheckedAccess>,
-            SyncOptAccessor<T, CheckedAccess>,
-            Mutex,
-            InternalMutex>;
+        using SyncBase = SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mutex, InternalMutex>;
+
         using Value_type   = typename SyncBase::Value_type;
         using Mutex_type   = typename SyncBase::Mutex_type;
         using Element_type = T;

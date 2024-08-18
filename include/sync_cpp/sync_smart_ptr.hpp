@@ -7,22 +7,28 @@
 
 namespace spp
 {
-    template <detail::concepts::SmartPointer SP, bool Checked>
+    template <bool Checked>
     struct SyncSmartPtrAccessor
     {
-        // clang-format off
-        SP::element_type& operator()(SP& sp) const requires Checked {
-            return sp ? *sp : throw std::runtime_error{ "Trying to access SyncSmartPtr with nullptr value!" };
-        }
-        const SP::element_type& operator()(const SP& sp) const requires Checked {
-            return sp ? *sp : throw std::runtime_error{ "Trying to access SyncSmartPtr with nullptr value!" };
+        template <typename From>
+        static decltype(auto) deref(From&& from) noexcept
+        {
+            if constexpr (std::is_const_v<std::remove_reference_t<From>>) {
+                return std::as_const(*from);
+            } else {
+                return *from;
+            }
         }
 
-        SP::element_type&       operator()(SP& sp) const       requires(!Checked) { return *sp; }
-        const SP::element_type& operator()(const SP& sp) const requires(!Checked) { return *sp; }
-
-        auto operator<=>(const SyncSmartPtrAccessor& other) const = default;
-        // clang-format on
+        decltype(auto) operator()(auto&& sp) const noexcept(not Checked)
+            requires Checked
+        {
+            if constexpr (Checked) {
+                return sp ? deref(sp) : throw std::runtime_error{ "Trying to access SyncSmartPtr with nullptr value!" };
+            } else {
+                return deref(sp);
+            }
+        }
     };
 
     template <
@@ -30,22 +36,13 @@ namespace spp
         typename Mutex     = std::mutex,
         bool CheckedAccess = true,
         bool InternalMutex = true>
-    class SyncSmartPtr : public SyncContainer<
-                             SP,
-                             typename SP::element_type,
-                             SyncSmartPtrAccessor<SP, CheckedAccess>,
-                             SyncSmartPtrAccessor<SP, CheckedAccess>,
-                             Mutex,
-                             InternalMutex>
+    class SyncSmartPtr
+        : public SyncContainer<SP, typename SP::element_type, SyncSmartPtrAccessor<CheckedAccess>, Mutex, InternalMutex>
     {
     public:
-        using SyncBase = SyncContainer<
-            SP,
-            typename SP::element_type,
-            SyncSmartPtrAccessor<SP, CheckedAccess>,
-            SyncSmartPtrAccessor<SP, CheckedAccess>,
-            Mutex,
-            InternalMutex>;
+        using SyncBase
+            = SyncContainer<SP, typename SP::element_type, SyncSmartPtrAccessor<CheckedAccess>, Mutex, InternalMutex>;
+
         using Value_type   = typename SyncBase::Value_type;
         using Mutex_type   = typename SyncBase::Mutex_type;
         using Element_type = typename SP::element_type;
