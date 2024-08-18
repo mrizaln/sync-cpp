@@ -4,7 +4,7 @@ Synchronized object wrapper for C++20
 
 ## TODO
 
-- [ ] Allow stateful lambda for `SyncContainer` `Getter`and`GetterConst` (but should I though?)
+- [ ] Allow stateful lambda for `SyncContainer` `Getter` (but should I though?)
 - [ ] Rework `Sync::read` and `Sync::write` that has member function arguments with some kind of function traits ([see](https://breese.github.io/2022/03/06/deducing-function-signatures.html)) to reduce repetition
 
 ## Dependencies
@@ -16,7 +16,7 @@ Synchronized object wrapper for C++20
 
 ### Setting up
 
-Clone this repository (or as submodule) into your project somewhere, even easier, use FetchContent. Then link your target against `sync_cpp`.
+Clone this repository (or as submodule) into your project somewhere, even easier, use FetchContent. Then link your target against `sync-cpp`.
 
 ```cmake
 # If you are using FetchContent
