@@ -55,24 +55,24 @@ int main()
 {
     using namespace std::string_literals;
 
-    auto string = spp::Sync{ "sdafjh"s };                                   // deduction guide -> spp::Sync<std::string, std::mutex>
-    auto substr = string.write([](auto& str) {                              // mutate the value inside Sync
+    auto string = spp::Sync{ "sdafjh"s };                         // deduction guide -> spp::Sync<std::string, std::mutex>
+    auto substr = string.write([](auto& str) {                    // mutate the value inside Sync
         str = "hello world!";
         return str.substr(6, 5);
     });
 
     std::cout << substr << '\n';
 
-    auto syncA = spp::Sync<Foo, std::shared_mutex>{};                       // using std::shared_mutex
-    auto value = syncA.read(&Foo::bar, 403.9);                              // calling (const) member function
+    auto sync_a = spp::Sync<Foo, std::shared_mutex>{};            // using std::shared_mutex
+    auto value  = sync_a.read(&Foo::bar, 403.9);                  // calling (const) member function
 
-    auto syncUnique = spp::SyncUnique<Foo>{ new Foo{} };                    // Sync<std::unique_ptr<T>, M> but with more convenient API
-    auto notNull    = syncUnique.read([](const std::unique_ptr<Foo>& sp) {  // access (read) the unique_ptr
+    auto sync_unique = spp::SyncUnique<Foo>{ new Foo{} };         // Sync<std::unique_ptr<T>, M> but with more convenient API
+    auto not_null    = sync_unique.read([](const auto& sp) {      // access (read) the unique_ptr
         return sp != nullptr;
     });
 
-    if (syncUnique) {                                                       // bool conversion just like std::unique_ptr
-        auto n = syncUnique.readValue([](const Foo& a) {                    // read the value contained within unique_ptr
+    if (sync_unique) {                                            // bool conversion just like std::unique_ptr
+        auto n = sync_unique.read_value([](const Foo& a) {        // read the value contained within unique_ptr
             int v = a.bar(42.0);
             return v * 12;
         });
@@ -106,14 +106,14 @@ struct Something;
 
 struct Foo
 {
-    Something& getGlobalSomething() const;
+    Something& get_global_something() const;
 };
 
-spp::Sync<Foo> foo;
+auto foo = spp::Sync<Foo>{};
 
 // ...
 
-auto* something = foo.read([](const Foo& f) { return &f.getGlobalSomething(); });
+auto* something = foo.read([](const Foo& f) { return &f.get_global_something(); });
 
 // even this
 auto* innerFoo = foo.write([](Foo& f) { return &f; });    // don't do this
@@ -122,7 +122,8 @@ auto* innerFoo = foo.write([](Foo& f) { return &f; });    // don't do this
 - Unfortunately, currently we can pass a `nullptr` as member function pointer to the read and write function. For now, I'll ignore this case, and assume that every member function pointer passed to the functions are not `nullptr`. I don't know what to do when it's `nullptr` (`throw`? `assert`? do nothing?)
 
 ```cpp
-struct Foo {
+struct Foo
+{
     int bar(int v);
 };
 
@@ -137,6 +138,6 @@ int v   = foo.write(f, 1);    // passing a nullptr, very bad
 
 ## Customization
 
-The class [`SyncContainer`](./include/sync_cpp/sync_container.hpp) is an adapter class that flattens the accessor (read and write) to the value inside Sync (readValue and writeValue). You can extend from this class to work with other container (or your custom type) so it will be easier to work with
+The class [`SyncContainer`](./include/sync_cpp/sync_container.hpp) is an adapter class that flattens the accessor (read and write) to the value inside Sync (read_value and writeValue). You can extend from this class to work with other container (or your custom type) so it will be easier to work with
 
 > For examples, see how [SyncSmartPtr](./include/sync_cpp/sync_smart_ptr.hpp) and [SyncOpt](./include/sync_cpp/sync_opt.hpp) implemented.
