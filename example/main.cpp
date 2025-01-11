@@ -8,8 +8,8 @@
 
 namespace mock
 {
-    // this class is a mock of spp::Sync that does not have any synchronization mechanism, it just forwards function
-    // calls this mock class is used to demonstrate data race
+    // this class is a mock of spp::Sync that does not have any synchronization mechanism, it just forwards
+    // function calls this mock class is used to demonstrate data race
     template <typename T, typename = void, bool = true>
     class Sync
     {
@@ -20,7 +20,7 @@ namespace mock
         }
 
         template <typename TT>
-        [[nodiscard]] TT get(TT T::*mem) const
+        [[nodiscard]] TT get(TT T::* mem) const
         {
             return m_value.*mem;
         }
@@ -119,25 +119,25 @@ int main()
 {
     using namespace std::chrono_literals;
 
-    Sync<Foo> foo{ "Example" };
+    auto foo = Sync<Foo>{ "Example" };
 
-    std::jthread t1([&foo]() {
+    auto t1 = std::jthread{ [&foo]() {
         for (std::size_t i = 0; i < 10; ++i) {
-            auto n = foo.write(&Foo::add, static_cast<int>(i));
+            auto n = foo.write(&Foo::add, static_cast<int>(i));                 // ok, returns a value
             print("Thread 1: Added {}, data size is now {}\n", i, n);
             std::this_thread::sleep_for(100ms);
         }
-    });
+    } };
 
-    std::jthread t2([&foo]() {
+    auto t2 = std::jthread{ [&foo]() {
         for (std::size_t i = 0; i < 10; ++i) {
-            auto name = foo.read([](const Foo& f) { return f.getName(); });
+            auto name = foo.read([](const Foo& f) { return f.getName(); });     // ok, copy value
             print("Thread 2: Foo name is '{}'\n", name);
             std::this_thread::sleep_for(100ms);
         }
-    });
+    } };
 
-    std::jthread t3([&foo]() {
+    auto t3 = std::jthread{ [&foo]() {
         for (std::size_t i = 0; i < 5; ++i) {
             foo.write([](Foo& f) {
                 std::this_thread::sleep_for(50ms);
@@ -146,12 +146,12 @@ int main()
                 print("Thread 3: Erased {} elements, data size is now {}\n", r, n - r);
                 print("Thread 3: ");
             });
-            foo.read(&Foo::print);
+            foo.read(&Foo::print);                                              // ok, returns nothing
             std::this_thread::sleep_for(150ms);
         }
-    });
+    } };
 
-    std::jthread t4([&foo] {
+    auto t4 = std::jthread{ [&foo] {
         for (std::size_t i = 0; i < 10; ++i) {
             // auto data = foo.read(&Foo::getData);    // won't compile, member function returns a reference
             auto data = foo.read([](const Foo& f) { return f.getData(); });    // OK: gets copy
@@ -162,5 +162,5 @@ int main()
             print("\n");
             std::this_thread::sleep_for(100ms);
         }
-    });
+    } };
 }

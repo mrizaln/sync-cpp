@@ -24,7 +24,8 @@ namespace spp
             requires Checked
         {
             if constexpr (Checked) {
-                return sp ? deref(sp) : throw std::runtime_error{ "Trying to access SyncSmartPtr with nullptr value!" };
+                return sp ? deref(sp)
+                          : throw std::runtime_error{ "Trying to access SyncSmartPtr with nullptr value!" };
             } else {
                 return deref(sp);
             }
@@ -33,19 +34,27 @@ namespace spp
 
     template <
         detail::concepts::SmartPointer SP,
-        typename Mutex     = std::mutex,
+        typename Mtx       = std::mutex,
         bool CheckedAccess = true,
         bool InternalMutex = true>
-    class SyncSmartPtr
-        : public SyncContainer<SP, typename SP::element_type, SyncSmartPtrAccessor<CheckedAccess>, Mutex, InternalMutex>
+    class SyncSmartPtr : public SyncContainer<
+                             SP,
+                             typename SP::element_type,
+                             SyncSmartPtrAccessor<CheckedAccess>,
+                             Mtx,
+                             InternalMutex>
     {
     public:
-        using SyncBase
-            = SyncContainer<SP, typename SP::element_type, SyncSmartPtrAccessor<CheckedAccess>, Mutex, InternalMutex>;
+        using SyncBase = SyncContainer<
+            SP,
+            typename SP::element_type,
+            SyncSmartPtrAccessor<CheckedAccess>,
+            Mtx,
+            InternalMutex>;
 
-        using Value_type   = typename SyncBase::Value_type;
-        using Mutex_type   = typename SyncBase::Mutex_type;
-        using Element_type = typename SP::element_type;
+        using Value   = typename SyncBase::Value;
+        using Mutex   = typename SyncBase::Mutex;
+        using Element = typename SP::element_type;
 
         template <typename... Args>
             requires std::constructible_from<SP, Args...> && InternalMutex
@@ -61,14 +70,14 @@ namespace spp
         }
 
         template <typename... Args>
-            requires std::constructible_from<SP, Args...> && (!InternalMutex)
-        SyncSmartPtr(Mutex& mutex, Args&&... args)
+            requires std::constructible_from<SP, Args...> && (not InternalMutex)
+        SyncSmartPtr(Mtx& mutex, Args&&... args)
             : SyncBase{ mutex, std::forward<Args>(args)... }
         {
         }
 
-        SyncSmartPtr(Mutex& mutex, SP&& sptr)
-            requires(!InternalMutex)
+        SyncSmartPtr(Mtx& mutex, SP&& sptr)
+            requires (not InternalMutex)
             : SyncBase{ mutex, std::move(sptr) }
         {
         }
@@ -78,9 +87,9 @@ namespace spp
             return SyncBase::read([](const SP& sptr) { return static_cast<bool>(sptr); });
         }
 
-        bool hasValue() const { return static_cast<bool>(*this); }
+        bool has_value() const { return static_cast<bool>(*this); }
 
-        void reset(Element_type* ptr = nullptr)
+        void reset(Element* ptr = nullptr)
         {
             SyncBase::write([ptr](SP& sp) { sp.reset(ptr); });
         }
@@ -93,18 +102,23 @@ namespace spp
     };
 
     // aliases
-    template <typename T, typename M = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
-    using SyncUnique = SyncSmartPtr<std::unique_ptr<T>, M, CheckedAccess, InternalMutex>;
+    template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
+    using SyncUnique = SyncSmartPtr<std::unique_ptr<T>, Mtx, CheckedAccess, InternalMutex>;
 
-    template <typename T, typename D, typename M = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
-    using SyncUniqueCustom = SyncSmartPtr<std::unique_ptr<T, D>, M, CheckedAccess, InternalMutex>;
+    template <
+        typename T,
+        typename Delete,
+        typename Mtx       = std::mutex,
+        bool CheckedAccess = true,
+        bool InternalMutex = true>
+    using SyncUniqueCustom = SyncSmartPtr<std::unique_ptr<T, Delete>, Mtx, CheckedAccess, InternalMutex>;
 
-    template <typename T, typename M = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
-    using SyncShared = SyncSmartPtr<std::shared_ptr<T>, M, CheckedAccess, InternalMutex>;
+    template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
+    using SyncShared = SyncSmartPtr<std::shared_ptr<T>, Mtx, CheckedAccess, InternalMutex>;
 
     // deduction guides
-    template <typename T, typename D = std::default_delete<T>>
-    SyncSmartPtr(std::unique_ptr<T, D>) -> SyncSmartPtr<std::unique_ptr<T, D>>;
+    template <typename T, typename Delete = std::default_delete<T>>
+    SyncSmartPtr(std::unique_ptr<T, Delete>) -> SyncSmartPtr<std::unique_ptr<T, Delete>>;
 
     template <typename T>
     SyncSmartPtr(std::shared_ptr<T>) -> SyncSmartPtr<std::shared_ptr<T>>;

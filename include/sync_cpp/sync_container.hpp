@@ -9,18 +9,18 @@ namespace spp
         typename Container,
         typename Element,
         typename Getter,
-        typename Mutex     = std::mutex,
+        typename Mtx       = std::mutex,
         bool InternalMutex = true>
         requires detail::concepts::Transformer<Getter, Container&, Element&>                //
               && detail::concepts::Transformer<Getter, const Container&, const Element&>    //
               && detail::concepts::StatelessLambda<Getter>                                  //
               && std::is_class_v<Element>
-    class SyncContainer : public Sync<Container, Mutex, InternalMutex>
+    class SyncContainer : public Sync<Container, Mtx, InternalMutex>
     {
     public:
-        using Value_type = Container;
-        using Mutex_type = Mutex;
-        using SyncBase   = Sync<Container, Mutex, InternalMutex>;
+        using Value    = Container;
+        using Mutex    = Mtx;
+        using SyncBase = Sync<Container, Mtx, InternalMutex>;
 
         template <typename... Args>
             requires std::constructible_from<Container, Args...> && InternalMutex
@@ -29,71 +29,62 @@ namespace spp
         {
         }
 
-        SyncContainer(Container&& container)
-            requires InternalMutex
-            : SyncBase{ std::move(container) }
-        {
-        }
-
         template <typename... Args>
-            requires std::constructible_from<Container, Args...> && (!InternalMutex)
-        SyncContainer(Mutex& mutex, Args&&... args)
+            requires std::constructible_from<Container, Args...> && (not InternalMutex)
+        SyncContainer(Mtx& mutex, Args&&... args)
             : SyncBase{ mutex, std::forward<Args>(args)... }
         {
         }
 
-        SyncContainer(Mutex& mutex, Container&& container)
-            requires(!InternalMutex)
-            : SyncBase{ mutex, std::move(container) }
-        {
-        }
-
         template <typename TT>
-        [[nodiscard]] TT getValue(TT Element::*mem) const
+        [[nodiscard]] TT get_value(TT Element::* mem) const
         {
             return SyncBase::read([&](const Container& container) {
-                decltype(auto) value{ getContained(container) };
+                decltype(auto) value = get_contained(container);
                 return value.*mem;
             });
         }
 
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret readValue(Ret (Element::*fn)(Args...) const, std::type_identity_t<Args>... args) const
+        [[nodiscard]] Ret read_value(
+            Ret (Element::*fn)(Args...) const,
+            std::type_identity_t<Args>... args
+        ) const
         {
             return SyncBase::read([&](const Container& container) {
-                decltype(auto) value{ getContained(container) };
+                decltype(auto) value = get_contained(container);
                 return (value.*fn)(std::forward<Args>(args)...);
             });
         }
 
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret writeValue(Ret (Element::*fn)(Args...), std::type_identity_t<Args>... args)
+        [[nodiscard]] Ret write_value(Ret (Element::*fn)(Args...), std::type_identity_t<Args>... args)
         {
             return SyncBase::write([&](Container& container) {
-                decltype(auto) value{ getContained(container) };
+                decltype(auto) value = get_contained(container);
                 return (value.*fn)(std::forward<Args>(args)...);
             });
         }
 
-        [[nodiscard]] decltype(auto) readValue(std::invocable<const Element&> auto&& fn) const
+        [[nodiscard]] decltype(auto) read_value(std::invocable<const Element&> auto&& fn) const
         {
             return SyncBase::read([&](const Container& container) {
-                decltype(auto) value{ getContained(container) };
+                decltype(auto) value = get_contained(container);
                 return fn(value);
             });
         }
 
-        [[nodiscard]] decltype(auto) writeValue(std::invocable<Element&> auto&& fn)
+        [[nodiscard]] decltype(auto) write_value(std::invocable<Element&> auto&& fn)
         {
             return SyncBase::write([&](Container& container) {
-                decltype(auto) value{ getContained(container) };
+                decltype(auto) value = get_contained(container);
                 return fn(value);
             });
         }
 
     protected:
-        Element&       getContained(Container& container) { return m_getter(container); }
-        const Element& getContained(const Container& container) const { return m_getter(container); }
+        Element&       get_contained(Container& container) { return m_getter(container); }
+        const Element& get_contained(const Container& container) const { return m_getter(container); }
 
     private:
         [[no_unique_address]] Getter m_getter;

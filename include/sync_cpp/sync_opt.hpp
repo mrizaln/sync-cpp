@@ -16,7 +16,7 @@ namespace spp
             return opt.value();
         }
         decltype(auto) operator()(auto&& opt) const
-            requires(!Checked)
+            requires (not Checked)
         {
             return *opt;
         }
@@ -24,15 +24,22 @@ namespace spp
         auto operator<=>(const SyncOptAccessor&) const = default;
     };
 
-    template <typename T, typename Mutex = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
-    class SyncOpt : public SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mutex, InternalMutex>
+    template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
+    class SyncOpt
+        : public SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mtx, InternalMutex>
     {
     public:
-        using SyncBase = SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mutex, InternalMutex>;
+        using SyncBase
+            = SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mtx, InternalMutex>;
 
-        using Value_type   = typename SyncBase::Value_type;
-        using Mutex_type   = typename SyncBase::Mutex_type;
-        using Element_type = T;
+        using Value   = typename SyncBase::Value;
+        using Mutex   = typename SyncBase::Mutex;
+        using Element = T;
+
+        SyncOpt(const SyncOpt&)            = delete;
+        SyncOpt(SyncOpt&&)                 = delete;
+        SyncOpt& operator=(const SyncOpt&) = delete;
+        SyncOpt& operator=(SyncOpt&&)      = delete;
 
         template <typename... Args>
             requires std::constructible_from<T, Args...> && InternalMutex
@@ -40,11 +47,6 @@ namespace spp
             : SyncBase{ std::in_place, std::forward<Args>(args)... }
         {
         }
-
-        SyncOpt(const SyncOpt&)            = delete;
-        SyncOpt(SyncOpt&&)                 = delete;
-        SyncOpt& operator=(const SyncOpt&) = delete;
-        SyncOpt& operator=(SyncOpt&&)      = delete;
 
         explicit SyncOpt(T&& val)
             requires InternalMutex && std::movable<T>
@@ -59,20 +61,20 @@ namespace spp
         }
 
         template <typename... Args>
-            requires std::constructible_from<T, Args...> && (!InternalMutex)
-        SyncOpt(Mutex& mutex, Args&&... args)
+            requires std::constructible_from<T, Args...> && (not InternalMutex)
+        SyncOpt(Mtx& mutex, Args&&... args)
             : SyncBase{ mutex, std::in_place, std::forward<Args>(args)... }
         {
         }
 
-        explicit SyncOpt(Mutex& mutex, T&& val)
-            requires(!InternalMutex && std::movable<T>)
+        explicit SyncOpt(Mtx& mutex, T&& val)
+            requires (not InternalMutex && std::movable<T>)
             : SyncBase{ mutex, std::move(val) }
         {
         }
 
-        explicit SyncOpt(Mutex& mutex, const std::nullopt_t& null)
-            requires(!InternalMutex)
+        explicit SyncOpt(Mtx& mutex, const std::nullopt_t& null)
+            requires (not InternalMutex)
             : SyncBase{ mutex, null }
         {
         }
@@ -82,7 +84,7 @@ namespace spp
             return SyncBase::read([](const std::optional<T>& opt) { return opt.has_value(); });
         }
 
-        bool hasValue() const { return static_cast<bool>(*this); }
+        bool has_value() const { return static_cast<bool>(*this); }
 
         void reset()
         {

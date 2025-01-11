@@ -40,9 +40,9 @@ private:
 int main()
 {
     using Opt = spp::SyncOpt<Some>;
-    Opt::Value_type opt{};
-    Opt             opt1{ 10, "hello" };
-    Opt             opt2{ std::nullopt };
+    Opt::Value opt{};
+    Opt        opt1{ 10, "hello" };
+    Opt        opt2{ std::nullopt };
     // Opt             opt3{ Some(10, "hello") };
 
     std::mutex mutex;
@@ -55,6 +55,6 @@ int main()
     using namespace ut::literals;
     "throws"_test = [] {
         spp::SyncOpt<Some> opt{ std::nullopt };
-        ut::expect(ut::throws([&] { std::ignore = opt.readValue(&Some::get); }));
+        ut::expect(ut::throws([&] { std::ignore = opt.read_value(&Some::get); }));
     };
 }

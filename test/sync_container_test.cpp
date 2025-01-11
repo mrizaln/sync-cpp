@@ -50,7 +50,7 @@ int main()
 
                 SyncOptA syncA2{ 42 };
                 ut::expect(syncA2.read(&Container::has_value) == true);
-                ut::expect(syncA2.getValue(&A::m_value) == 42_i);
+                ut::expect(syncA2.get_value(&A::m_value) == 42_i);
             };
 
             "Operations"_test = [&] {
@@ -65,7 +65,7 @@ int main()
                 ut::expect(value == 2'387'324_i);
 
                 auto fmtA = [](const A& a) { return fmt("A = {}", a.m_value); };
-                auto strA = syncA3.readValue(fmtA);
+                auto strA = syncA3.read_value(fmtA);
                 ut::expect(strA == "A = 2387324");
 
                 syncA3.write(&std::optional<A>::reset);
@@ -87,7 +87,7 @@ int main()
 
                 SyncOptAExt syncA2{ mutex, 42 };
                 ut::expect(syncA2.read(&Container::has_value) == true);
-                ut::expect(syncA2.getValue(&A::m_value) == 42_i);
+                ut::expect(syncA2.get_value(&A::m_value) == 42_i);
             };
 
             "Operations"_test = [&] {
@@ -103,7 +103,7 @@ int main()
                 ut::expect(value == 2'387'324_i);
 
                 auto fmtA = [](const A& a) { return fmt("A = {}", a.m_value); };
-                auto strA = syncA.readValue(fmtA);
+                auto strA = syncA.read_value(fmtA);
                 ut::expect(strA == "A = 2387324");
 
                 syncA.write(&std::optional<A>::reset);
