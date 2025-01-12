@@ -21,7 +21,6 @@ namespace spp
         }
 
         decltype(auto) operator()(auto&& sp) const noexcept(not Checked)
-            requires Checked
         {
             if constexpr (Checked) {
                 return sp ? deref(sp)
