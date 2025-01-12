@@ -11,14 +11,12 @@ namespace spp
     struct SyncOptAccessor
     {
         decltype(auto) operator()(auto&& opt) const
-            requires Checked
         {
-            return opt.value();
-        }
-        decltype(auto) operator()(auto&& opt) const
-            requires (not Checked)
-        {
-            return *opt;
+            if constexpr (Checked) {
+                return opt.value();
+            } else {
+                return *opt;
+            }
         }
 
         auto operator<=>(const SyncOptAccessor&) const = default;
