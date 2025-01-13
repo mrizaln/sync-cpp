@@ -1,10 +1,10 @@
-#ifndef CONCEPTS_HPP_RG36TC7P
-#define CONCEPTS_HPP_RG36TC7P
+#ifndef SYNC_CPP_CONCEPTS_HPP_RG36TC7P
+#define SYNC_CPP_CONCEPTS_HPP_RG36TC7P
 
 #include <concepts>
 #include <type_traits>
 
-namespace spp::detail::concepts
+namespace spp::concepts
 {
     template <typename T, typename... Ts>
     concept DerivedFromAny = (std::derived_from<T, Ts> || ...);
@@ -40,4 +40,4 @@ namespace spp::detail::concepts
     concept StatelessLambda = std::is_empty_v<Fn>;
 }
 
-#endif /* end of include guard: CONCEPTS_HPP_RG36TC7P */
+#endif /* end of include guard: SYNC_CPP_CONCEPTS_HPP_RG36TC7P */

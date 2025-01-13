@@ -1,5 +1,5 @@
-#ifndef SYNC_SMART_PTR_PSV2QWED
-#define SYNC_SMART_PTR_PSV2QWED
+#ifndef SYNC_CPP_SYNC_SMART_PTR_PSV2QWED
+#define SYNC_CPP_SYNC_SMART_PTR_PSV2QWED
 
 #include "sync_container.hpp"
 
@@ -32,7 +32,7 @@ namespace spp
     };
 
     template <
-        detail::concepts::SmartPointer SP,
+        concepts::SmartPointer SP,
         typename Mtx       = std::mutex,
         bool CheckedAccess = true,
         bool InternalMutex = true>
@@ -123,4 +123,4 @@ namespace spp
     SyncSmartPtr(std::shared_ptr<T>) -> SyncSmartPtr<std::shared_ptr<T>>;
 }
 
-#endif /* end of include guard: SYNC_SMART_PTR_PSV2QWED */
+#endif /* end of include guard: SYNC_CPP_SYNC_SMART_PTR_PSV2QWED */

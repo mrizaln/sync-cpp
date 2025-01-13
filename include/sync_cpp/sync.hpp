@@ -1,7 +1,7 @@
-#ifndef SYNC_HPP_B4IRUHHF
-#define SYNC_HPP_B4IRUHHF
+#ifndef SYNC_CPP_SYNC_CPP_49PEW7R6FEO7DS
+#define SYNC_CPP_SYNC_CPP_49PEW7R6FEO7DS
 
-#include "detail/concepts.hpp"
+#include "sync_cpp/concepts.hpp"
 
 #include <mutex>
 #include <shared_mutex>
@@ -12,10 +12,13 @@ namespace spp
     template <typename T, typename M = std::mutex, bool InternalMutex = true>
         requires std::is_class_v<T>              //
               && (not std::is_reference_v<M>)    //
-              && detail::concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
+              && concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
     class Sync
     {
     public:
+        template <typename... Ts>
+        friend struct Group;
+
         using Value = T;
         using Mutex = M;
 
@@ -188,4 +191,4 @@ namespace spp
     Sync(T) -> Sync<T>;
 }
 
-#endif /* end of include guard: SYNC_HPP_B4IRUHHF */
+#endif /* end of include guard: SYNC_CPP_SYNC_CPP_49PEW7R6FEO7DS */

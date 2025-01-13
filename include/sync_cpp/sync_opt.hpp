@@ -1,7 +1,7 @@
-#ifndef SYNC_OPT_HP7FTB9E4
-#define SYNC_OPT_HP7FTB9E4
+#ifndef SYNC_CPP_SYNC_OPT_HP7FTB9E4
+#define SYNC_CPP_SYNC_OPT_HP7FTB9E4
 
-#include "sync_container.hpp"
+#include "sync_cpp/sync_container.hpp"
 
 #include <optional>
 
@@ -105,4 +105,4 @@ namespace spp
     SyncOpt(T&&) -> SyncOpt<T>;
 }
 
-#endif /* end of include guard: SYNC_OPT_HP7FTB9E4 */
+#endif /* end of include guard: SYNC_CPP_SYNC_OPT_HP7FTB9E4 */

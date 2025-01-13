@@ -1,7 +1,7 @@
-#ifndef SYNC_CONTAINER_HPP_6TIKVYGJ
-#define SYNC_CONTAINER_HPP_6TIKVYGJ
+#ifndef SYNC_CPP_SYNC_CONTAINER_HPP_6TIKVYGJ
+#define SYNC_CPP_SYNC_CONTAINER_HPP_6TIKVYGJ
 
-#include "sync.hpp"
+#include "sync_cpp/sync.hpp"
 
 namespace spp
 {
@@ -11,9 +11,9 @@ namespace spp
         typename Getter,
         typename Mtx       = std::mutex,
         bool InternalMutex = true>
-        requires detail::concepts::Transformer<Getter, Container&, Element&>                //
-              && detail::concepts::Transformer<Getter, const Container&, const Element&>    //
-              && detail::concepts::StatelessLambda<Getter>                                  //
+        requires concepts::Transformer<Getter, Container&, Element&>                //
+              && concepts::Transformer<Getter, const Container&, const Element&>    //
+              && concepts::StatelessLambda<Getter>                                  //
               && std::is_class_v<Element>
     class SyncContainer : public Sync<Container, Mtx, InternalMutex>
     {
@@ -91,4 +91,4 @@ namespace spp
     };
 }
 
-#endif /* end of include guard: SYNC_CONTAINER_HPP_6TIKVYGJ */
+#endif /* end of include guard: SYNC_CPP_SYNC_CONTAINER_HPP_6TIKVYGJ */
