@@ -1,6 +1,8 @@
 #include "print.hpp"
 
 #include <sync_cpp/sync.hpp>
+#include <sync_cpp/sync_smart_ptr.hpp>
+#include <sync_cpp/group.hpp>
 
 #include <string>
 #include <thread>
@@ -123,7 +125,7 @@ int main()
 
     auto t1 = std::jthread{ [&foo]() {
         for (std::size_t i = 0; i < 10; ++i) {
-            auto n = foo.write(&Foo::add, static_cast<int>(i));                 // ok, returns a value
+            auto n = foo.write(&Foo::add, static_cast<int>(i));    // ok, returns a value
             print("Thread 1: Added {}, data size is now {}\n", i, n);
             std::this_thread::sleep_for(100ms);
         }
@@ -131,7 +133,7 @@ int main()
 
     auto t2 = std::jthread{ [&foo]() {
         for (std::size_t i = 0; i < 10; ++i) {
-            auto name = foo.read([](const Foo& f) { return f.getName(); });     // ok, copy value
+            auto name = foo.read([](const Foo& f) { return f.getName(); });    // ok, copy value
             print("Thread 2: Foo name is '{}'\n", name);
             std::this_thread::sleep_for(100ms);
         }
@@ -146,7 +148,7 @@ int main()
                 print("Thread 3: Erased {} elements, data size is now {}\n", r, n - r);
                 print("Thread 3: ");
             });
-            foo.read(&Foo::print);                                              // ok, returns nothing
+            foo.read(&Foo::print);    // ok, returns nothing
             std::this_thread::sleep_for(150ms);
         }
     } };
@@ -154,8 +156,8 @@ int main()
     auto t4 = std::jthread{ [&foo] {
         for (std::size_t i = 0; i < 10; ++i) {
             // auto data = foo.read(&Foo::getData);    // won't compile, member function returns a reference
-            auto data = foo.read([](const Foo& f) { return f.getData(); });    // OK: gets copy
-            print("Thread 4: {} -> ", foo.get(&Foo::m_id));                    // OK: copied
+            auto data = foo.read([](const Foo& f) { return f.getData(); });    // ok: gets copy
+            print("Thread 4: {} -> ", foo.get(&Foo::m_id));                    // ok: copied
             for (const auto& i : data) {
                 print("{} ", i);
             }
@@ -163,4 +165,28 @@ int main()
             std::this_thread::sleep_for(100ms);
         }
     } };
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+
+    struct A
+    {
+        float m_value;
+    };
+    struct B
+    {
+        int m_value;
+    };
+
+    auto       mutex = std::shared_mutex{};
+    auto       foo_a = spp::Sync<A, std::shared_mutex, false>{ mutex, 3.14f };
+    const auto foo_b = spp::SyncUnique<B>{ new B{ 42 } };
+
+    spp::group(foo_a, foo_b).lock([](A& a, const std::unique_ptr<B>& b) {
+        a.m_value += static_cast<float>(b->m_value);
+    });
+
+    foo_a.read([](auto&& v) { print("A {{ {} }}\n", v.m_value); });
 }

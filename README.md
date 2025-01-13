@@ -41,6 +41,7 @@ This is an example usage of this library.
 #include <sync_cpp/sync.hpp>                // for Sync<T, M>;
 #include <sync_cpp/sync_smart_ptr.hpp>      // SyncUnique, SyncUniqueCustom, SyncShared: wrapper for Sync<std::unique_ptr, M> (also shared_ptr)
 #include <sync_cpp/sync_opt.hpp>            // same as above, but for std::optional
+#include <sync_cpp/group.hpp>               // allow grouped lock through spp::Group wrapper and spp::group factory function
 
 // #include <sync_cpp/sync_container.hpp>   // Sync container adapter (for your own container, single valued like std::unique_ptr)
 
@@ -77,6 +78,14 @@ int main()
             return v * 12;
         });
     }
+
+    // grouped lock                         ---- or use read()/write() for const/non-const access to all
+    //                                      ---- lock() access for each element is dependent on the constness of the underlying Sync
+    spp::group(string, sync_a, sync_unique).lock([](auto&& s, auto&& a, auto&& b) {
+        std::cout << "string: " << s << '\n'
+                  << "Foo 1 : " << a.bar(3.14) << '\n'
+                  << "Foo 2 : " << b->bar(1000.0) << '\n';
+    });
 }
 ```
 
