@@ -4,6 +4,7 @@ Synchronized object wrapper for C++20
 
 ## TODO
 
+- [x] Documentation
 - [ ] Allow stateful lambda for `SyncContainer` `Getter` (but should I though?)
 - [ ] Rework `Sync::read` and `Sync::write` that has member function arguments with some kind of function traits ([see](https://breese.github.io/2022/03/06/deducing-function-signatures.html)) to reduce repetition
 

@@ -7,13 +7,20 @@
 namespace spp
 {
     template <typename... Ts>
-    struct Group;
+    class [[nodiscard]] Group;
 
     template <typename... Ts>
     Group<Ts...> group(Ts&... syncs);
 
+    /**
+     * @class Group
+     *
+     * @brief A group of Sync objects wrapper.
+     *
+     * @tparam Ts The Sync objects actual types (derived from spp::Sync).
+     */
     template <typename... Ts>
-    struct Group
+    class [[nodiscard]] Group
     {
     private:
         template <typename T>
@@ -22,8 +29,14 @@ namespace spp
     public:
         friend Group<Ts...> group<Ts...>(Ts&... syncs);
 
-        // read-only access
-        decltype(auto) read(std::invocable<const Value<Ts>&...> auto&& fn) const
+        /**
+         * @brief Access all the Sync object's values in a read-only context.
+         *
+         * @param fn The function to call with the value.
+         *
+         * @return The return value of the function.
+         */
+        [[nodiscard]] decltype(auto) read(std::invocable<const Value<Ts>&...> auto&& fn) const
         {
             auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
                 return std::forward<decltype(fn)>(fn)(std::get<Is>(m_syncs).m_value...);
@@ -32,8 +45,14 @@ namespace spp
             return handler(std::index_sequence_for<Ts...>{});
         }
 
-        // write access
-        decltype(auto) write(std::invocable<Value<Ts>&...> auto&& fn) const
+        /**
+         * @brief Access all the Sync object's values in a read-write context.
+         *
+         * @param fn The function to call with the value.
+         *
+         * @return The return value of the function.
+         */
+        [[nodiscard]] decltype(auto) write(std::invocable<Value<Ts>&...> auto&& fn) const
             requires (not std::is_const_v<Ts> && ...)
         {
             auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
@@ -43,8 +62,15 @@ namespace spp
             return handler(std::index_sequence_for<Ts...>{});
         }
 
-        // dependent access mutability based on the T constness
-        decltype(auto) lock(std::invocable<Value<Ts>&...> auto&& fn) const
+        /**
+         * @brief Access all the Sync object's values in a const or non-const context depending on the
+         * constness of its Sync.
+         *
+         * @param fn The function to call with the value.
+         *
+         * @return The return value of the function.
+         */
+        [[nodiscard]] decltype(auto) lock(std::invocable<Value<Ts>&...> auto&& fn) const
         {
             auto lock_all = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
                 auto lock_read = []<typename M>(M& mutex) {
@@ -78,7 +104,7 @@ namespace spp
         {
         }
 
-        auto lock_read() const
+        [[nodiscard]] auto lock_read() const
         {
             auto lock = []<typename M>(M& mutex) {
                 if constexpr (std::derived_from<M, std::shared_mutex>) {
@@ -93,7 +119,7 @@ namespace spp
             return handler(std::index_sequence_for<Ts...>{});
         }
 
-        auto lock_write() const
+        [[nodiscard]] auto lock_write() const
         {
             auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
                 return std::tuple{ std::unique_lock{ std::get<Is>(m_syncs).mutex() }... };
@@ -104,6 +130,15 @@ namespace spp
         std::tuple<Ts&...> m_syncs;
     };
 
+    /**
+     * @brief Make a group of Sync objects.
+     *
+     * @tparam Ts The Sync objects actual types (derived from spp::Sync).
+     *
+     * @param syncs The Sync objects to group
+     *
+     * @return A Group object containing the Sync objects.
+     */
     template <typename... Ts>
     Group<Ts...> group(Ts&... syncs)
     {

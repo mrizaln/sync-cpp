@@ -7,6 +7,11 @@
 
 namespace spp
 {
+    /**
+     * @class SyncOptAccessor
+     *
+     * @brief Optional accessor for SyncOpt.
+     */
     template <bool Checked>
     struct SyncOptAccessor
     {
@@ -22,6 +27,13 @@ namespace spp
         auto operator<=>(const SyncOptAccessor&) const = default;
     };
 
+    /**
+     * @class SyncOpt
+     *
+     * @brief A wrapper around an optional with a mutex.
+     *
+     * @tparam T The type of the optional object to wrap.
+     */
     template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
     class SyncOpt
         : public SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mtx, InternalMutex>
@@ -77,23 +89,42 @@ namespace spp
         {
         }
 
+        /**
+         * @brief Check whether the optional has a value.
+         */
         explicit operator bool() const
         {
             return SyncBase::read([](const std::optional<T>& opt) { return opt.has_value(); });
         }
 
+        /**
+         * @brief Check whether the optional has a value.
+         */
         bool has_value() const { return static_cast<bool>(*this); }
 
+        /**
+         * @brief Reset the optional to empty.
+         */
         void reset()
         {
             SyncBase::write([](std::optional<T>& opt) { opt.reset(); });
         }
 
+        /**
+         * @brief Emplace a new value into the optional.
+         *
+         * @param value [TODO:parameter]
+         */
         void emplace(T&& value)
         {
             SyncBase::write([&value](std::optional<T>& opt) { opt.emplace(std::move(value)); });
         }
 
+        /**
+         * @brief Assign a new optional value.
+         *
+         * @param opt The new value to assign.
+         */
         SyncOpt& operator=(std::optional<T>&& opt)
         {
             SyncBase::write([&opt](std::optional<T>& o) { o = std::move(opt); });

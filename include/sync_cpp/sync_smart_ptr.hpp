@@ -7,6 +7,11 @@
 
 namespace spp
 {
+    /**
+     * @class SyncSmartPtrAccessor
+     *
+     * @brief Smart pointer accessor for SyncSmartPtr.
+     */
     template <bool Checked>
     struct SyncSmartPtrAccessor
     {
@@ -31,6 +36,11 @@ namespace spp
         }
     };
 
+    /**
+     * @class SyncSmartPtr
+     *
+     * @brief A wrapper around a smart pointer with a mutex.
+     */
     template <
         concepts::SmartPointer SP,
         typename Mtx       = std::mutex,
@@ -81,18 +91,32 @@ namespace spp
         {
         }
 
+        /**
+         * @brief Check if the underlying pointer is not nullptr.
+         */
         explicit operator bool() const
         {
             return SyncBase::read([](const SP& sptr) { return static_cast<bool>(sptr); });
         }
 
+        /**
+         * @brief Check if the underlying pointer is not nullptr.
+         */
         bool has_value() const { return static_cast<bool>(*this); }
 
+        /**
+         * @brief Reset the underlying pointer to nullptr.
+         */
         void reset(Element* ptr = nullptr)
         {
             SyncBase::write([ptr](SP& sp) { sp.reset(ptr); });
         }
 
+        /**
+         * @brief Replace the underlying pointer with a new one.
+         *
+         * @param sptr The new smart pointer.
+         */
         SyncSmartPtr& operator=(SP&& sptr)
         {
             SyncBase::write([&sptr](SP& sp) { sp = std::move(sptr); });
@@ -101,9 +125,21 @@ namespace spp
     };
 
     // aliases
+    // -------
+    /**
+     * @brief A wrapper around a unique pointer with a mutex.
+     *
+     * @tparam T The type of the unique pointer element.
+     */
     template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
     using SyncUnique = SyncSmartPtr<std::unique_ptr<T>, Mtx, CheckedAccess, InternalMutex>;
 
+    /**
+     * @brief A wrapper around a unique pointer with a custom deleter and a mutex.
+     *
+     * @tparam T The type of the unique pointer element.
+     * @tparam Delete The type of the deleter.
+     */
     template <
         typename T,
         typename Delete,
@@ -112,15 +148,23 @@ namespace spp
         bool InternalMutex = true>
     using SyncUniqueCustom = SyncSmartPtr<std::unique_ptr<T, Delete>, Mtx, CheckedAccess, InternalMutex>;
 
+    /**
+     * @brief A wrapper around a shared pointer with a mutex.
+     *
+     * @tparam T The type of the shared pointer element.
+     */
     template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
     using SyncShared = SyncSmartPtr<std::shared_ptr<T>, Mtx, CheckedAccess, InternalMutex>;
+    // -------
 
     // deduction guides
+    // ----------------
     template <typename T, typename Delete = std::default_delete<T>>
     SyncSmartPtr(std::unique_ptr<T, Delete>) -> SyncSmartPtr<std::unique_ptr<T, Delete>>;
 
     template <typename T>
     SyncSmartPtr(std::shared_ptr<T>) -> SyncSmartPtr<std::shared_ptr<T>>;
+    // ----------------
 }
 
 #endif /* end of include guard: SYNC_CPP_SYNC_SMART_PTR_PSV2QWED */

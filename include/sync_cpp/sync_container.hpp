@@ -5,6 +5,15 @@
 
 namespace spp
 {
+    /**
+     * @class SyncContainer
+     *
+     * @brief A wrapper around a container object with a mutex.
+     *
+     * @tparam Container The type of the container object to wrap.
+     * @tparam Element The element of the container object.
+     * @tparam Getter The getter to access the element of the container object.
+     */
     template <
         typename Container,
         typename Element,
@@ -36,6 +45,12 @@ namespace spp
         {
         }
 
+        /**
+         * @brief Get the contained wrapped value's member by copy.
+         *
+         * @tparam TT [TODO:tparam]
+         * @return [TODO:return]
+         */
         template <typename TT>
         [[nodiscard]] TT get_value(TT Element::* mem) const
         {
@@ -45,6 +60,16 @@ namespace spp
             });
         }
 
+        /**
+         * @brief Call the contained wrapped value's const member function.
+         *
+         * @tparam Ret The return type of the member function.
+         * @tparam Args The parameter types of the member function.
+         *
+         * @param args The argument to the member function.
+         *
+         * @return The value of the call to the member function.
+         */
         template <typename Ret, typename... Args>
         [[nodiscard]] Ret read_value(
             Ret (Element::*fn)(Args...) const,
@@ -57,8 +82,43 @@ namespace spp
             });
         }
 
+        /**
+         * @brief Call the contained wrapped value's const member function.
+         *
+         * @tparam Ret The return type of the member function.
+         * @tparam Args The parameter types of the member function.
+         *
+         * @param args The argument to the member function.
+         *
+         * @return The value of the call to the member function.
+         */
         template <typename Ret, typename... Args>
-        [[nodiscard]] Ret write_value(Ret (Element::*fn)(Args...), std::type_identity_t<Args>... args)
+        [[nodiscard]] Ret read_value(
+            Ret (Element::*fn)(Args...) const noexcept,
+            std::type_identity_t<Args>... args
+        ) const
+        {
+            return SyncBase::read([&](const Container& container) {
+                decltype(auto) value = get_contained(container);
+                return (value.*fn)(std::forward<Args>(args)...);
+            });
+        }
+
+        /**
+         * @brief Call the contained wrapped value's non-const member function.
+         *
+         * @tparam Ret The return type of the member function.
+         * @tparam Args The parameter types of the member function.
+         *
+         * @param args The argument to the member function.
+         *
+         * @return The value of the call to the member function.
+         */
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret write_value(
+            Ret (Element::*fn)(Args...),    //
+            std::type_identity_t<Args>... args
+        )
         {
             return SyncBase::write([&](Container& container) {
                 decltype(auto) value = get_contained(container);
@@ -66,6 +126,35 @@ namespace spp
             });
         }
 
+        /**
+         * @brief Call the contained wrapped value's non-const member function.
+         *
+         * @tparam Ret The return type of the member function.
+         * @tparam Args The parameter types of the member function.
+         *
+         * @param args The argument to the member function.
+         *
+         * @return The value of the call to the member function.
+         */
+        template <typename Ret, typename... Args>
+        [[nodiscard]] Ret write_value(
+            Ret (Element::*fn)(Args...) noexcept,
+            std::type_identity_t<Args>... args
+        )
+        {
+            return SyncBase::write([&](Container& container) {
+                decltype(auto) value = get_contained(container);
+                return (value.*fn)(std::forward<Args>(args)...);
+            });
+        }
+
+        /**
+         * @brief Access the contained wrapped value in a read-only context.
+         *
+         * @param fn The function to call with the value.
+         *
+         * @return The return value of the function.
+         */
         [[nodiscard]] decltype(auto) read_value(std::invocable<const Element&> auto&& fn) const
         {
             return SyncBase::read([&](const Container& container) {
@@ -74,6 +163,13 @@ namespace spp
             });
         }
 
+        /**
+         * @brief Access the contained wrapped value in a read-write context.
+         *
+         * @param fn The function to call with the value.
+         *
+         * @return The return value of the function.
+         */
         [[nodiscard]] decltype(auto) write_value(std::invocable<Element&> auto&& fn)
         {
             return SyncBase::write([&](Container& container) {

@@ -1,5 +1,5 @@
-**/compile_commands.json
-**/*.bak
-.cache/
 **/build/
-neovim.json
+**/*.json
+docs/doxygen
+.cache/
+
