@@ -43,9 +43,10 @@ namespace spp
      */
     template <
         concepts::SmartPointer SP,
-        typename Mtx       = std::mutex,
-        bool CheckedAccess = true,
-        bool InternalMutex = true>
+        concepts::SyncMutex    Mtx           = std::mutex,
+        bool                   CheckedAccess = true,
+        bool                   InternalMutex = true>
+        requires concepts::Syncable<typename SP::element_type>
     class SyncSmartPtr : public SyncContainer<
                              SP,
                              typename SP::element_type,

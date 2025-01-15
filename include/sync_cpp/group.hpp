@@ -1,6 +1,8 @@
 #ifndef SYNC_CPP_SYNC_GROUP_HPP_43OEW98IRFDU
 #define SYNC_CPP_SYNC_GROUP_HPP_43OEW98IRFDU
 
+#include "sync_cpp/concepts.hpp"
+
 #include <mutex>
 #include <shared_mutex>
 
@@ -9,7 +11,7 @@ namespace spp
     template <typename... Ts>
     class [[nodiscard]] Group;
 
-    template <typename... Ts>
+    template <concepts::SyncDerivative... Ts>
     Group<Ts...> group(Ts&... syncs);
 
     /**
@@ -162,7 +164,7 @@ namespace spp
      * TODO: add constraints to Ts
      *
      */
-    template <typename... Ts>
+    template <concepts::SyncDerivative... Ts>
     Group<Ts...> group(Ts&... syncs)
     {
         return Group<Ts...>{ std::tie(syncs...) };

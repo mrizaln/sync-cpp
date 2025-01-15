@@ -34,7 +34,11 @@ namespace spp
      *
      * @tparam T The type of the optional object to wrap.
      */
-    template <typename T, typename Mtx = std::mutex, bool CheckedAccess = true, bool InternalMutex = true>
+    template <
+        concepts::Syncable  T,
+        concepts::SyncMutex Mtx           = std::mutex,
+        bool                CheckedAccess = true,
+        bool                InternalMutex = true>
     class SyncOpt
         : public SyncContainer<std::optional<T>, T, SyncOptAccessor<CheckedAccess>, Mtx, InternalMutex>
     {

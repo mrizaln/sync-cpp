@@ -17,13 +17,14 @@ namespace spp
     template <
         typename Container,
         typename Element,
-        typename Getter,
-        typename Mtx       = std::mutex,
-        bool InternalMutex = true>
+        concepts::Syncable  Getter,
+        concepts::SyncMutex Mtx           = std::mutex,
+        bool                InternalMutex = true>
         requires concepts::Transformer<Getter, Container&, Element&>                //
-              && concepts::Transformer<Getter, const Container&, const Element&>    //
-              && concepts::StatelessLambda<Getter>                                  //
-              && std::is_class_v<Element>
+             and concepts::Transformer<Getter, const Container&, const Element&>    //
+             and concepts::StatelessLambda<Getter>                                  //
+             and concepts::Syncable<Element>                                        //
+             and concepts::SyncMutex<Mtx>
     class SyncContainer : public Sync<Container, Mtx, InternalMutex>
     {
     public:
@@ -32,14 +33,14 @@ namespace spp
         using SyncBase = Sync<Container, Mtx, InternalMutex>;
 
         template <typename... Args>
-            requires std::constructible_from<Container, Args...> && InternalMutex
+            requires std::constructible_from<Container, Args...> and InternalMutex
         SyncContainer(Args&&... args)
             : SyncBase{ std::forward<Args>(args)... }
         {
         }
 
         template <typename... Args>
-            requires std::constructible_from<Container, Args...> && (not InternalMutex)
+            requires std::constructible_from<Container, Args...> and (not InternalMutex)
         SyncContainer(Mtx& mutex, Args&&... args)
             : SyncBase{ mutex, std::forward<Args>(args)... }
         {

@@ -16,11 +16,8 @@ namespace spp
      *
      * @tparam T The type of the object to wrap.
      */
-    template <typename T, typename M = std::mutex, bool InternalMutex = true>
-        requires std::is_class_v<T>              //
-              && (not std::is_reference_v<M>)    //
-              && concepts::DerivedFromAny<M, std::shared_mutex, std::mutex, std::recursive_mutex>
-    class Sync
+    template <concepts::Syncable T, concepts::SyncMutex M = std::mutex, bool InternalMutex = true>
+    class Sync : public tag::SyncTag
     {
     public:
         template <typename... Ts>
@@ -41,7 +38,7 @@ namespace spp
         static void  operator delete[](void*) = delete;
 
         template <typename... Args>
-            requires std::constructible_from<T, Args...> && InternalMutex
+            requires std::constructible_from<T, Args...> and InternalMutex
         Sync(Args&&... args)
             : m_value{ std::forward<Args>(args)... }
             , m_mutex{}
@@ -49,7 +46,7 @@ namespace spp
         }
 
         template <typename... Args>
-            requires std::constructible_from<T, Args...> && (not InternalMutex)
+            requires std::constructible_from<T, Args...> and (not InternalMutex)
         Sync(M& mutex, Args&&... args)
             : m_value{ std::forward<Args>(args)... }
             , m_mutex{ &mutex }
