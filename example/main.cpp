@@ -182,11 +182,13 @@ int main()
 
     auto       mutex = std::shared_mutex{};
     auto       foo_a = spp::Sync<A, std::shared_mutex, false>{ mutex, 3.14f };
-    const auto foo_b = spp::SyncUnique<B>{ new B{ 42 } };
+    auto const foo_b = spp::SyncUnique<B>{ new B{ 42 } };
 
-    spp::group(foo_a, foo_b).lock([](A& a, const std::unique_ptr<B>& b) {
-        a.m_value += static_cast<float>(b->m_value);
-    });
+    auto group = spp::group(foo_a, foo_b);
 
+    group.lock([](auto&& a, auto&& b) { a.m_value += static_cast<float>(b->m_value); });
     foo_a.read([](auto&& v) { print("A {{ {} }}\n", v.m_value); });
+
+    // won't compile
+    // auto& ref = group.write([](auto& a, auto& b) -> decltype(auto) { return a; });
 }

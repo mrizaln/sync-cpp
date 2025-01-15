@@ -38,9 +38,16 @@ namespace spp
          */
         [[nodiscard]] decltype(auto) read(std::invocable<const Value<Ts>&...> auto&& fn) const
         {
-            auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
                 return std::forward<decltype(fn)>(fn)(std::get<Is>(m_syncs).m_value...);
             };
+
+            static_assert(
+                not std::is_lvalue_reference_v<decltype(handler(std::index_sequence_for<Ts...>{}))>,
+                "Function returning a reference in multithreaded context is dangerous! Consider copying "
+                "instead."
+            );
+
             auto locks = lock_read();
             return handler(std::index_sequence_for<Ts...>{});
         }
@@ -53,11 +60,18 @@ namespace spp
          * @return The return value of the function.
          */
         [[nodiscard]] decltype(auto) write(std::invocable<Value<Ts>&...> auto&& fn) const
-            requires (not std::is_const_v<Ts> && ...)
+            requires (not std::is_const_v<Ts> and ...)
         {
-            auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
                 return std::forward<decltype(fn)>(fn)(std::get<Is>(m_syncs).m_value...);
             };
+
+            static_assert(
+                not std::is_lvalue_reference_v<decltype(handler(std::index_sequence_for<Ts...>{}))>,
+                "Function returning a reference in multithreaded context is dangerous! Consider copying "
+                "instead."
+            );
+
             auto locks = lock_write();
             return handler(std::index_sequence_for<Ts...>{});
         }
@@ -90,9 +104,15 @@ namespace spp
                 return std::tuple{ lock(std::get<Is>(m_syncs))... };
             };
 
-            auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            auto handler = [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
                 return std::forward<decltype(fn)>(fn)(std::get<Is>(m_syncs).m_value...);
             };
+
+            static_assert(
+                not std::is_lvalue_reference_v<decltype(handler(std::index_sequence_for<Ts...>{}))>,
+                "Function returning a reference in multithreaded context is dangerous! Consider copying "
+                "instead."
+            );
 
             auto locks = lock_all(std::index_sequence_for<Ts...>{});
             return handler(std::index_sequence_for<Ts...>{});
@@ -138,6 +158,9 @@ namespace spp
      * @param syncs The Sync objects to group
      *
      * @return A Group object containing the Sync objects.
+     *
+     * TODO: add constraints to Ts
+     *
      */
     template <typename... Ts>
     Group<Ts...> group(Ts&... syncs)
