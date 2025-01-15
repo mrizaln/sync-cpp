@@ -3,6 +3,7 @@
 #include <boost/ut.hpp>
 #include <fmt/core.h>
 
+#include <cassert>
 #include <exception>
 #include <memory>
 
@@ -12,7 +13,7 @@ public:
     int m_id;
 
     Some(int v, std::string name)
-        : m_id{ ++m_idCounter }
+        : m_id{ ++m_id_counter }
         , m_value{ v }
         , m_name{ std::move(name) }
     {
@@ -30,7 +31,7 @@ public:
     int modify(int v) { return m_value += v; }
 
 private:
-    inline static int m_idCounter{ 0 };
+    inline static int m_id_counter{ 0 };
 
     int         m_value;
     std::string m_name;
@@ -45,11 +46,11 @@ using namespace spp;
 
 int main()
 {
-    int val;
+    auto val = 0;
 
-    //
     // plain type
-    Sync<Some> some{ 42, "stack" };    // OK
+    // ----------
+    auto some = Sync<Some>{ 42, "stack" };    // OK
 
     val = some.read(&Some::get);
     fmt::print("Some::get '{}'\n", val);
@@ -57,79 +58,80 @@ int main()
     val = some.write(&Some::modify, 13);
     fmt::print("Some::modify '{}'\n", val);
 
-    //
     // unique_ptr
-    SyncUnique<Some> uniqSome{ std::make_unique<Some>(43, "uniq") };    // OK
-    // SyncUnique<Some> uniqSome{ new Some{ 43, "uniq" } };             // OK: calling new manually
+    // ----------
+    auto uniq_some   = SyncUnique<Some>{ std::make_unique<Some>(43, "uniq") };    // OK
+    auto uniq_some_2 = SyncUnique<Some>{ new Some{ 43, "uniq" } };                // OK: calling new manually
 
-    val = uniqSome.read_value(&Some::get);
+    val = uniq_some.read_value(&Some::get);
     fmt::print("Some::get '{}'\n", val);
 
-    val = uniqSome.write_value(&Some::modify, 13);
+    val = uniq_some.write_value(&Some::modify, 13);
     fmt::print("Some::modify '{}'\n", val);
 
-    //
     // shared_ptr
-    SyncShared<Some> sharedSome{ std::make_shared<Some>(44, "shared") };    // OK
-    // SyncShared<Some> sharedSome{ new Some{ 44, "shared"} };              // OK: calling new manually
+    // ----------
+    auto shared_some   = SyncShared<Some>{ std::make_shared<Some>(44, "shared") };    // OK
+    auto shared_some_2 = SyncShared<Some>{ new Some{ 44, "shared" } };    // OK: calling new manually
 
-    val = sharedSome.read_value(&Some::get);
+    val = shared_some.read_value(&Some::get);
     fmt::print("Some::get '{}'\n", val);
 
-    val = sharedSome.write_value(&Some::modify, 13);
+    val = shared_some.write_value(&Some::modify, 13);
     fmt::print("Some::modify '{}'\n", val);
 
-    //
     // unique_ptr with custom deleter
-    SyncUniqueCustom<Some, void (*)(Some*)> uniqSomeCustom{ create(45), destroy };    // OK, function pointer
-    // SyncUniqueCustom<Some, decltype([](Some* s) { destroy(s); })> uniqSomeCustom{ create(45) };    // OK, lambda
+    // ------------------------------
+    auto uniq_some_custom_ptr    = SyncUniqueCustom<Some, void (*)(Some*)>{ create(4), destroy };
+    auto uniq_some_custom_lambda = SyncUniqueCustom<Some, decltype([](Some* s) { destroy(s); })>{ create(4) };
 
-    val = uniqSomeCustom.read_value(&Some::get);
+    val = uniq_some_custom_ptr.read_value(&Some::get);
     fmt::print("Some::get '{}'\n", val);
 
-    val = uniqSomeCustom.write_value(&Some::modify, 13);
+    val = uniq_some_custom_ptr.write_value(&Some::modify, 13);
     fmt::print("Some::modify '{}'\n", val);
 
-    //
     // shared_ptr with custom deleter
-    SyncShared<Some> sharedSomeCustom{ create(46), destroy };    // OK, function pointer
-    // LockedShared<Some> sharedSomeCustom{ create(46), [](Some* s) { destroy(s); } };      // OK, lambda
+    // ------------------------------
+    auto shared_some_custom_ptr    = SyncShared<Some>{ create(46), destroy };
+    auto shared_some_custom_lambda = SyncShared<Some>{ create(46), [](Some* s) { destroy(s); } };
 
-    val = sharedSomeCustom.read_value(&Some::get);
+    val = shared_some_custom_ptr.read_value(&Some::get);
     fmt::print("Some::get '{}'\n", val);
 
-    val = sharedSomeCustom.write_value(&Some::modify, 13);
+    val = shared_some_custom_ptr.write_value(&Some::modify, 13);
     fmt::print("Some::modify '{}'\n", val);
 
-    //
     // other
-    val = uniqSome.read_value([](const Some& some) {
-        auto someValue = some.get();
-        return someValue + 42;
+    // -----
+    val = uniq_some.read_value([](const Some& some) {
+        auto some_value = some.get();
+        return some_value + 42;
     });
 
-    val = uniqSome.write_value([](Some& some) {
-        auto someValue = some.modify(12);
-        return someValue + 42;
+    val = uniq_some.write_value([](Some& some) {
+        auto some_value = some.modify(12);
+        return some_value + 42;
     });
 
-    auto ptr [[maybe_unused]] = uniqSome.read([](auto& up) { return up.get(); });
+    auto ptr [[maybe_unused]] = uniq_some.read([](auto& up) { return up.get(); });
 
-    auto b [[maybe_unused]] = static_cast<bool>(uniqSome);
-    b                       = !uniqSome;
+    auto b [[maybe_unused]] = static_cast<bool>(uniq_some);
+    b                       = !uniq_some;
 
-    if (uniqSome) { }
-    if (!uniqSome) { }
+    if (uniq_some) { }
+    if (!uniq_some) { }
 
-    uniqSome.reset(new Some{ 312, "dfjh" });
-    uniqSome = std::make_unique<Some>(213, "reuu");
+    uniq_some.reset(new Some{ 312, "dfjh" });
+    uniq_some = std::make_unique<Some>(213, "reuu");
 
-    decltype(uniqSome) uniqSome2{ new Some{ 312, "sdjfhdskfjh" } };
-    // decltype(uniqSome) uniqSome3{ std::move(uniqSome2) };    // FAIL: call to deleted move constructor
-    // uniqSome = std::move(uniqSome3);                         // FAIL: call to deleted move assignment
+    auto unique_some_3 = decltype(uniq_some){ new Some{ 312, "sdjfhdskfjh" } };
+    // auto unique_some_4 = std::move(unique_some_3);    // FAIL: call to deleted move constructor
+    // unique_some        = std::move(unique_some_3);    // FAIL: call to deleted move assignment
 
     using boost::ut::reflection::type_name;
 
+    // clang-format off
     fmt::print("\n");
     using Mutex = decltype(some)::Mutex;
     fmt::print("{:>2} = sizeof '{}'\n", sizeof(Mutex), type_name<Mutex>());
@@ -137,35 +139,43 @@ int main()
     fmt::print("{:>2} = sizeof '{}'\n", sizeof(Some), type_name<Some>());
     fmt::print("{:>2} = sizeof '{}'\n", sizeof(some), type_name<decltype(some)>());
 
-    using UniquePtr = decltype(uniqSome)::Value;
+    using UniquePtr = decltype(uniq_some)::Value;
     fmt::print("{:>2} = sizeof '{}'\n", sizeof(UniquePtr), type_name<UniquePtr>());
-    fmt::print("{:>2} = sizeof '{}'\n", sizeof(uniqSome), type_name<decltype(uniqSome)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(uniq_some), type_name<decltype(uniq_some)>());
 
-    using UniquePtrCustom = decltype(uniqSomeCustom)::Value;
+    using UniquePtrCustom = decltype(uniq_some_custom_ptr)::Value;
     fmt::print("{:>2} = sizeof '{}'\n", sizeof(UniquePtrCustom), type_name<UniquePtrCustom>());
-    fmt::print("{:>2} = sizeof '{}'\n", sizeof(uniqSomeCustom), type_name<decltype(uniqSomeCustom)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(uniq_some_custom_ptr), type_name<decltype(uniq_some_custom_ptr)>()
+    );
 
-    using SharedPtr = decltype(sharedSome)::Value;
+    using SharedPtr = decltype(shared_some)::Value;
     fmt::print("{:>2} = sizeof '{}'\n", sizeof(SharedPtr), type_name<SharedPtr>());
-    fmt::print("{:>2} = sizeof '{}'\n", sizeof(sharedSome), type_name<decltype(sharedSome)>());
-    fmt::print("{:>2} = sizeof '{}'\n", sizeof(sharedSomeCustom), type_name<decltype(sharedSomeCustom)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(shared_some), type_name<decltype(shared_some)>());
+    fmt::print("{:>2} = sizeof '{}'\n", sizeof(shared_some_custom_ptr), type_name<decltype(shared_some_custom_ptr)>());
     fmt::print("\n");
+    // clang-format on
 
     // using deduction guides
-    SyncSmartPtr syncedUniqGuide{ std::make_unique<Some>(1, "one") };
-    SyncSmartPtr syncedUniqCustomGuide{ std::unique_ptr<Some, void (*)(Some*)>{ new Some{ 2, "two" }, destroy } };
-    SyncSmartPtr syncedShared{ std::make_shared<Some>(3, "three") };
+    // ----------------------
+    auto sync_unique_guide      = SyncSmartPtr{ std::make_unique<Some>(1, "one") };
+    auto sync_uniq_custom_guide = SyncSmartPtr{
+        std::unique_ptr<Some, void (*)(Some*)>{ new Some{ 2, "two" }, destroy },
+    };
 
-    // ctad for alias (works on gcc 13 not on clang 17)
-    // SyncUnique syncedUniqGuide2{ std::make_unique<Some>(1, "one") };
-    // SyncShared syncedShared2{ std::make_shared<Some>(3, "three") };
+    auto sync_shared = SyncSmartPtr{ std::make_shared<Some>(3, "three") };
 
-    auto id [[maybe_unused]] = syncedUniqGuide.get_value(&Some::m_id);
+    // ctad for alias (works on gcc 14 not on clang 19)
+    // ------------------------------------------------
+    // auto sync_uniq_guide_2 = SyncUnique{ std::make_unique<Some>(1, "one") };
+    // auto sync_shared_2     = SyncShared{ std::make_shared<Some>(3, "three") };
 
-    syncedUniqGuide.reset(nullptr);
-    // auto va = syncedUniqGuide.read_value(&Some::get);
+    auto id [[maybe_unused]] = sync_unique_guide.get_value(&Some::m_id);
+
+    sync_unique_guide.reset(nullptr);
+
     try {
-        auto ve [[maybe_unused]] = syncedUniqGuide.write_value(&Some::modify, 12);
+        auto ve [[maybe_unused]] = sync_unique_guide.write_value(&Some::modify, 12);
+        assert("this code path should not be reachable since above expression must always throw");
     } catch (std::exception& e) {
         std::cerr << "Exception catched: " << e.what() << '\n';
     }

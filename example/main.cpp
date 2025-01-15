@@ -191,4 +191,16 @@ int main()
 
     // won't compile
     // auto& ref = group.write([](auto& a, auto& b) -> decltype(auto) { return a; });
+
+    struct C
+    {
+        using Value = A;
+        using Mutex = std::mutex;
+
+        Value m_value;
+    };
+
+    static_assert(spp::concepts::Syncable<C::Value>);
+    static_assert(spp::concepts::SyncMutex<C::Mutex>);
+    static_assert(not spp::concepts::SyncDerivative<C>);
 }

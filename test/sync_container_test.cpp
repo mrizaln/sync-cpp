@@ -35,78 +35,78 @@ int main()
     using Container = std::optional<A>;
     using Getter    = decltype([](auto&& opt) -> decltype(auto) { return opt.value(); });
 
-    ut::suite basicOperations [[maybe_unused]] = [] {
+    ut::suite basic_operations [[maybe_unused]] = [] {
         using SyncOptA = SyncContainer<std::optional<A>, A, Getter, std::mutex>;
 
         "Internal mutex"_test = [&] {
             "Default ctor"_test = [&] {
-                SyncOptA syncA;
-                ut::expect(syncA.read(&Container::has_value) == false);
+                auto sync_a = SyncOptA{};
+                ut::expect(sync_a.read(&Container::has_value) == false);
             };
 
             "Value ctor"_test = [&] {
-                SyncOptA syncA{ std::nullopt };
-                ut::expect(syncA.read(&Container::has_value) == false);
+                auto sync_a = SyncOptA{ std::nullopt };
+                ut::expect(sync_a.read(&Container::has_value) == false);
 
-                SyncOptA syncA2{ 42 };
-                ut::expect(syncA2.read(&Container::has_value) == true);
-                ut::expect(syncA2.get_value(&A::m_value) == 42_i);
+                auto sync_a_2 = SyncOptA{ 42 };
+                ut::expect(sync_a_2.read(&Container::has_value) == true);
+                ut::expect(sync_a_2.get_value(&A::m_value) == 42_i);
             };
 
             "Operations"_test = [&] {
-                SyncOptA syncA3{ std::nullopt };
-                syncA3.write([](auto& o) { o = A{ 42 }; });
+                auto sync_a_3 = SyncOptA{ std::nullopt };
+                sync_a_3.write([](auto& o) { o = A{ 42 }; });
 
-                bool hasValue = syncA3.read([](const auto& o) { return o.has_value(); });
-                ut::expect(hasValue == true);
+                auto has_value = sync_a_3.read([](const auto& o) { return o.has_value(); });
+                ut::expect(has_value == true);
 
-                syncA3.write([](auto& o) { o = A{ 2'387'324 }; });
-                auto value = syncA3.read([](const auto& o) { return o.value().m_value; });
+                sync_a_3.write([](auto& o) { o = A{ 2'387'324 }; });
+                auto value = sync_a_3.read([](const auto& o) { return o.value().m_value; });
                 ut::expect(value == 2'387'324_i);
 
-                auto fmtA = [](const A& a) { return fmt("A = {}", a.m_value); };
-                auto strA = syncA3.read_value(fmtA);
-                ut::expect(strA == "A = 2387324");
+                auto fmt_a = [](const A& a) { return fmt("A = {}", a.m_value); };
+                auto str_a = sync_a_3.read_value(fmt_a);
+                ut::expect(str_a == "A = 2387324");
 
-                syncA3.write(&std::optional<A>::reset);
+                sync_a_3.write(&std::optional<A>::reset);
             };
         };
 
         "External mutex"_test = [&] {
             using SyncOptAExt = SyncContainer<Container, A, Getter, std::mutex, false>;
-            std::mutex mutex;
+            auto mutex        = std::mutex{};
 
             "Default ctor"_test = [&] {
-                SyncOptAExt syncA{ mutex };
-                ut::expect(syncA.read(&Container::has_value) == false);
+                auto sync_a = SyncOptAExt{ mutex };
+                ut::expect(sync_a.read(&Container::has_value) == false);
             };
 
             "Value ctor"_test = [&] {
-                SyncOptAExt syncA{ mutex, std::nullopt };
-                ut::expect(syncA.read(&Container::has_value) == false);
+                auto sync_a = SyncOptAExt{ mutex, std::nullopt };
+                ut::expect(sync_a.read(&Container::has_value) == false);
 
-                SyncOptAExt syncA2{ mutex, 42 };
-                ut::expect(syncA2.read(&Container::has_value) == true);
-                ut::expect(syncA2.get_value(&A::m_value) == 42_i);
+                auto sync_a_2 = SyncOptAExt{ mutex, 42 };
+                ut::expect(sync_a_2.read(&Container::has_value) == true);
+                ut::expect(sync_a_2.get_value(&A::m_value) == 42_i);
             };
 
             "Operations"_test = [&] {
-                SyncOptAExt syncA{ mutex, 42 };
+                auto sync_a = SyncOptAExt{ mutex, 42 };
 
-                syncA.write([](auto& o) { o = A{ 42 }; });
+                sync_a.write([](auto& o) { o = A{ 42 }; });
 
-                bool hasValue = syncA.read([](const auto& o) { return o.has_value(); });
-                ut::expect(hasValue == true);
+                auto has_value = sync_a.read([](const auto& o) { return o.has_value(); });
+                ut::expect(has_value == true);
 
-                syncA.write([](auto& o) { o = A{ 2'387'324 }; });
-                auto value = syncA.read([](const auto& o) { return o.value().m_value; });
+                sync_a.write([](auto& o) { o = A{ 2'387'324 }; });
+                auto value = sync_a.read([](const auto& o) { return o.value().m_value; });
                 ut::expect(value == 2'387'324_i);
 
-                auto fmtA = [](const A& a) { return fmt("A = {}", a.m_value); };
-                auto strA = syncA.read_value(fmtA);
-                ut::expect(strA == "A = 2387324");
+                auto fmt_a = [](const A& a) { return fmt("A = {}", a.m_value); };
+                auto str_a = sync_a.read_value(fmt_a);
+                ut::expect(str_a == "A = 2387324");
 
-                syncA.write(&std::optional<A>::reset);
+                sync_a.write(&std::optional<A>::reset);
             };
         };
     };
@@ -117,12 +117,12 @@ int main()
 
         using StatelessSyncOptA = SyncContainer<Container, A, StatelessGetter, Mutex>;
 
-        constexpr auto containerSize = sizeof(Container);
-        constexpr auto mutexSize     = sizeof(Mutex);
-        constexpr auto getterSize    = sizeof(StatelessGetter);
-        constexpr auto syncBaseSize  = containerSize + mutexSize;
+        constexpr auto container_size = sizeof(Container);
+        constexpr auto mutex_size     = sizeof(Mutex);
+        constexpr auto getter_size    = sizeof(StatelessGetter);
+        constexpr auto sync_base_size = container_size + mutex_size;
 
-        ut::expect(sizeof(StatelessSyncOptA) < syncBaseSize + getterSize);
-        ut::expect(sizeof(StatelessSyncOptA) == syncBaseSize);
+        ut::expect(sizeof(StatelessSyncOptA) < sync_base_size + getter_size);
+        ut::expect(sizeof(StatelessSyncOptA) == sync_base_size);
     };
 }

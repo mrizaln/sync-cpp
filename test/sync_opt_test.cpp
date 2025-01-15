@@ -11,7 +11,7 @@ public:
     int m_id;
 
     Some(int v, std::string name)
-        : m_id{ ++m_idCounter }
+        : m_id{ ++m_id_counter }
         , m_value{ v }
         , m_name{ std::move(name) }
     {
@@ -31,7 +31,7 @@ public:
     int modify(int v) { return m_value += v; }
 
 private:
-    inline static int m_idCounter{ 0 };
+    inline static int m_id_counter{ 0 };
 
     int         m_value;
     std::string m_name;
@@ -40,21 +40,23 @@ private:
 int main()
 {
     using Opt = spp::SyncOpt<Some>;
-    Opt::Value opt{};
-    Opt        opt1{ 10, "hello" };
-    Opt        opt2{ std::nullopt };
-    // Opt             opt3{ Some(10, "hello") };
 
-    std::mutex mutex;
+    auto opt   = Opt::Value{};
+    auto opt_1 = Opt{ 10, "hello" };
+    auto opt_2 = Opt{ std::nullopt };
+    // auto opt_3 = Opt{ Some(10, "hello") };       // FAIL: Some is not movable
+
+    auto mutex = std::mutex{};
     using EOpt = spp::SyncOpt<Some, std::mutex, true, false>;
-    EOpt opt5{ mutex, 10, "hello" };
-    EOpt opt6{ mutex, std::nullopt };
-    // EOpt opt7{ mutex, Some(10, "hello") };       // use forwarding instead
+
+    auto opt_4 = EOpt{ mutex, 10, "hello" };
+    auto opt_5 = EOpt{ mutex, std::nullopt };
+    // auto opt_6 = EOpt{ mutex, Some(10, "hello") };    // FAIL: Some is not movable
 
     namespace ut = boost::ut;
     using namespace ut::literals;
     "throws"_test = [] {
-        spp::SyncOpt<Some> opt{ std::nullopt };
+        auto opt = spp::SyncOpt<Some>{ std::nullopt };
         ut::expect(ut::throws([&] { std::ignore = opt.read_value(&Some::get); }));
     };
 }
