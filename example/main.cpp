@@ -46,7 +46,7 @@ namespace mock
     };
 }
 
-#ifdef USE_MOCK
+#ifdef SYNC_CPP_EXAMPLE_USE_MOCK
 using mock::Sync;
 #else
 using spp::Sync;

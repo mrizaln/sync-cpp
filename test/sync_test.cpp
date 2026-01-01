@@ -30,8 +30,7 @@
 #endif
 
 #if ENABLE_PRINT
-#    include <fmt/core.h>
-#    define print(...) fmt::print(__VA_ARGS__)
+#    define print(...) std::cout << std::format(__VA_ARGS__);
 #else
 #    define print(...)
 #endif
